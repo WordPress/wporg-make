@@ -1,0 +1,24 @@
+{
+	"name": "wporg-make",
+	"version": "1.0.0",
+	"description": "The codebase and development environment for the make.wordpress.org home theme.",
+	"author": "WordPress.org",
+	"license": "GPL-2.0-or-later",
+	"private": true,
+	"devDependencies": {
+		"@wordpress/env": "9.7.0",
+		"@wordpress/scripts": "27.6.0"
+	},
+	"scripts": {
+		"build:theme": "yarn workspace wporg-make-2024 build",
+		"lint:php": "composer lint ./source/wp-content/themes/wporg-make-2024",
+		"setup:tools": "yarn && composer install && TEXTDOMAIN=make-wporg composer exec update-configs",
+		"setup:wp": "wp-env run cli bash env/setup.sh",
+		"start:theme": "yarn workspace wporg-make-2024 start",
+		"update:tools": "composer update && TEXTDOMAIN=make-wporg composer exec update-configs",
+		"wp-env": "wp-env"
+	},
+	"workspaces": [
+		"source/wp-content/themes/wporg-make-2024"
+	]
+}
