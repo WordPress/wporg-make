@@ -4,7 +4,32 @@
  * Enqueue theme styles.
  */
 function make_enqueue_scripts() {
-	wp_enqueue_style( 'make-style', get_stylesheet_uri(), array(), filemtime( __DIR__ . '/style.css' ) );
+	// The parent style is registered as `wporg-parent-2021-style`, and will be loaded unless
+	// explicitly unregistered. We can load any child-theme overrides by declaring the parent
+	// stylesheet as a dependency.
+	$style_path = get_stylesheet_directory() . '/build/style/style-index.css';
+	$style_uri = get_stylesheet_directory_uri() . '/build/style/style-index.css';
+	wp_enqueue_style(
+		'wporg-make-2024-style',
+		$style_uri,
+		array( 'wporg-parent-2021-style', 'wporg-global-fonts' ),
+		filemtime( $style_path )
+	);
+	wp_style_add_data( 'wporg-make-2024-style', 'path', $style_path );
+
+	$rtl_file = str_replace( '.css', '-rtl.css', $style_path );
+	if ( is_rtl() && file_exists( $rtl_file ) ) {
+		wp_style_add_data( 'wporg-make-2024-style', 'rtl', 'replace' );
+		wp_style_add_data( 'wporg-make-2024-style', 'path', $rtl_file );
+	}
+
+	// Preload the heading font(s).
+	if ( is_callable( 'global_fonts_preload' ) ) {
+		/* translators: Subsets can be any of cyrillic, cyrillic-ext, greek, greek-ext, vietnamese, latin, latin-ext. */
+		$subsets = _x( 'Latin', 'Heading font subsets, comma separated', 'make-wporg' );
+		// All headings.
+		global_fonts_preload( 'EB Garamond, Inter', $subsets );
+	}
 }
 add_action( 'wp_enqueue_scripts', 'make_enqueue_scripts' );
 
