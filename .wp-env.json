@@ -12,7 +12,11 @@
 	},
 	"core": "WordPress/WordPress#master",
 	"plugins": [
-		"./source/wp-content/plugins/gutenberg"
+		"./source/wp-content/plugins/gutenberg",
+		"./source/wp-content/plugins/handbook",
+		"./source/wp-content/plugins/wordpress-importer",
+		"./source/wp-content/plugins/wporg-make-sites-cpt",
+		"./source/wp-content/plugins/wporg-contributor-orientation"
 	],
 	"themes": [
 		"./source/wp-content/themes/wporg-parent-2021",

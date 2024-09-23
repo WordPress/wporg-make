@@ -35,6 +35,10 @@
 		},
 		{
 			"type": "vcs",
+			"url": "git@github.com:WordPress/wporg-contributor-orientation.git"
+		},
+		{
+			"type": "vcs",
 			"url": "git@github.com:WordPress/wporg-repo-tools.git"
 		},
 		{
@@ -57,6 +61,26 @@
 						"url": "https://meta.svn.wordpress.org/sites/",
 						"reference": "trunk/wordpress.org/public_html/wp-content/mu-plugins/pub/"
 					}
+				},
+				{
+					"name": "wordpress-meta/wporg-make-sites-cpt",
+					"type": "wordpress-plugin",
+					"version": "1",
+					"source": {
+						"type": "svn",
+						"url": "https://meta.svn.wordpress.org/sites/",
+						"reference": "trunk/wordpress.org/public_html/wp-content/plugins/wporg-make-sites-cpt"
+					}
+				},
+				{
+					"name": "wordpress-meta/handbook",
+					"type": "wordpress-plugin",
+					"version": "2",
+					"source": {
+						"type": "svn",
+						"url": "https://meta.svn.wordpress.org/sites/",
+						"reference": "trunk/wordpress.org/public_html/wp-content/plugins/handbook/"
+					}
 				}
 			]
 		}
@@ -67,7 +91,10 @@
 		"dealerdirect/phpcodesniffer-composer-installer": "^0.7.0",
 		"phpcompatibility/phpcompatibility-wp": "*",
 		"phpunit/phpunit": "^7.5.20",
+		"wordpress/wporg-contributor-orientation": "dev-build",
+		"wordpress-meta/handbook": "2",
 		"wordpress-meta/pub": "1",
+		"wordpress-meta/wporg-make-sites-cpt": "1",
 		"wp-coding-standards/wpcs": "2.*",
 		"wp-phpunit/wp-phpunit": "^5.4",
 		"wpackagist-plugin/gutenberg": "*",

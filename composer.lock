@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "20b866a9cbed6c77930c009a8764b367",
+    "content-hash": "ff39f0104c41aa6d0bfa7dd80f69ad62",
     "packages": [],
     "packages-dev": [
         {
@@ -2363,6 +2363,16 @@
             "time": "2022-06-03T18:03:27+00:00"
         },
         {
+            "name": "wordpress-meta/handbook",
+            "version": "2",
+            "source": {
+                "type": "svn",
+                "url": "https://meta.svn.wordpress.org/sites/",
+                "reference": "trunk/wordpress.org/public_html/wp-content/plugins/handbook/"
+            },
+            "type": "wordpress-plugin"
+        },
+        {
             "name": "wordpress-meta/pub",
             "version": "1",
             "source": {
@@ -2371,6 +2381,53 @@
                 "reference": "trunk/wordpress.org/public_html/wp-content/mu-plugins/pub/"
             },
             "type": "wordpress-muplugin"
+        },
+        {
+            "name": "wordpress-meta/wporg-make-sites-cpt",
+            "version": "1",
+            "source": {
+                "type": "svn",
+                "url": "https://meta.svn.wordpress.org/sites/",
+                "reference": "trunk/wordpress.org/public_html/wp-content/plugins/wporg-make-sites-cpt"
+            },
+            "type": "wordpress-plugin"
+        },
+        {
+            "name": "wordpress/wporg-contributor-orientation",
+            "version": "dev-build",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/WordPress/wporg-contributor-orientation.git",
+                "reference": "ba2fa95b3058020663fc0864383ccf107a4f2e0a"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/WordPress/wporg-contributor-orientation/zipball/ba2fa95b3058020663fc0864383ccf107a4f2e0a",
+                "reference": "ba2fa95b3058020663fc0864383ccf107a4f2e0a",
+                "shasum": ""
+            },
+            "require-dev": {
+                "dealerdirect/phpcodesniffer-composer-installer": "^0.7.0",
+                "phpcompatibility/phpcompatibility-wp": "*",
+                "wp-coding-standards/wpcs": "2.3.*"
+            },
+            "type": "wordpress-plugin",
+            "scripts": {
+                "lint": [
+                    "phpcs --extensions=php -s -p"
+                ],
+                "format": [
+                    "phpcbf -p"
+                ]
+            },
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "support": {
+                "source": "https://github.com/WordPress/wporg-contributor-orientation/tree/build",
+                "issues": "https://github.com/WordPress/wporg-contributor-orientation/issues"
+            },
+            "time": "2024-09-23T05:23:03+00:00"
         },
         {
             "name": "wp-coding-standards/wpcs",
@@ -2619,6 +2676,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
+        "wordpress/wporg-contributor-orientation": 20,
         "wporg/wporg-repo-tools": 20,
         "wporg/wporg-mu-plugins": 20,
         "wporg/wporg-parent-2021": 20
