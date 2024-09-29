@@ -1,5 +1,7 @@
 <?php
 
+add_filter( 'wporg_block_navigation_menus', 'add_site_navigation_menus' );
+
 /**
  * Enqueue theme styles.
  */
@@ -42,6 +44,48 @@ function make_setup_theme() {
 	add_theme_support( 'title-tag' );
 }
 add_action( 'after_setup_theme', 'make_setup_theme' );
+
+/**
+ * Provide a list of local navigation menus.
+ */
+function add_site_navigation_menus( $menus ) {
+	$menu = array(
+		array(
+			'label' => __( 'Meetings', 'make-wporg' ),
+			'url'   => site_url( '/meetings/' ),
+		),
+		array(
+			'label' => __( 'Team Updates', 'make-wporg' ),
+			'url'   => site_url( '/updates/' ),
+		),
+		array(
+			'label' => __( 'Project Updates', 'make-wporg' ),
+			'url'   => site_url( '/project/' ),
+		),
+		array(
+			'label'     => __( 'Five for the Future', 'make-wporg' ),
+			'url'       => 'https://wordpress.org/five-for-the-future/',
+		),
+		array(
+			'label' => __( 'Contributor Handbook', 'make-wporg' ),
+			'url'   => site_url( '/handbook/' ),
+		),
+	);
+
+	if ( ! is_user_logged_in() ) {
+		global $wp;
+		$redirect_url = home_url( $wp->request );
+		$menu[] = array(
+			'label' => __( 'Log in', 'make-wporg' ),
+			'url' => wp_login_url( $redirect_url ),
+			'className' => 'has-separator',
+		);
+	}
+
+	$menus['make'] = $menu;
+
+	return $menus;
+}
 
 /**
  * Modify the main query on the home and search pages.
