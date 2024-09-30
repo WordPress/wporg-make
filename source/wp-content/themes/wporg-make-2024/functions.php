@@ -1,6 +1,19 @@
 <?php
 
-add_filter( 'wporg_block_navigation_menus', 'add_site_navigation_menus' );
+namespace WordPressdotorg\Theme\Make_2024;
+
+/**
+ * Actions and filters.
+ */
+add_action( 'after_setup_theme', __NAMESPACE__ . '\make_setup_theme' );
+add_action( 'pre_get_posts', __NAMESPACE__ . '\make_query_mods' );
+add_action( 'wp_enqueue_scripts', __NAMESPACE__ . '\make_enqueue_scripts' );
+
+add_filter( 'document_title_parts', __NAMESPACE__ . '\make_add_frontpage_name_to_title' );
+add_filter( 'post_class', __NAMESPACE__ . '\make_home_site_classes', 10, 3 );
+add_filter( 'the_posts', __NAMESPACE__ . '\make_handle_non_post_routes', 10, 2 );
+add_filter( 'wporg_block_navigation_menus', __NAMESPACE__ . '\add_site_navigation_menus' );
+add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\make_noindex' );
 
 /**
  * Enqueue theme styles.
@@ -33,7 +46,6 @@ function make_enqueue_scripts() {
 		global_fonts_preload( 'EB Garamond, Inter', $subsets );
 	}
 }
-add_action( 'wp_enqueue_scripts', 'make_enqueue_scripts' );
 
 /**
  * Sets up theme defaults and registers support for various WordPress features.
@@ -43,7 +55,6 @@ function make_setup_theme() {
 	add_theme_support( 'post-thumbnails' );
 	add_theme_support( 'title-tag' );
 }
-add_action( 'after_setup_theme', 'make_setup_theme' );
 
 /**
  * Provide a list of local navigation menus.
@@ -102,26 +113,27 @@ function make_query_mods( $query ) {
 		$query->set_404();
 	}
 }
-add_action( 'pre_get_posts', 'make_query_mods' );
 
-add_filter(
-	'the_posts',
-	function( $posts, $query ) {
-		// Ensure all non-post routes 404, as this site isn't like most others.
-		if (
-			( ! is_admin() && $query->is_main_query() && ! $query->is_robots() && ! $posts ) ||
-			( ! is_admin() && $query->is_main_query() && $query->is_post_type_archive( 'meeting' ) && $query->get( 'paged' ) > 1 ) // Pagination on the query is explicitly disabled, so this doens't 404
-		) {
-			$query->set_404();
-			status_header( 404 );
-			nocache_headers();
-		}
+/**
+ * Ensure all non-post routes 404, as this site isn't like most others.
+ *
+ * @param array    $posts The array of posts.
+ * @param WP_Query $query The WP_Query instance (passed by reference).
+ * @return array The filtered posts array.
+ */
+function make_handle_non_post_routes( $posts, $query ) {
+	if (
+		( ! is_admin() && $query->is_main_query() && ! $query->is_robots() && ! $posts ) ||
+			// Pagination on the query is explicitly disabled, so this doesn't 404
+			( ! is_admin() && $query->is_main_query() && $query->is_post_type_archive( 'meeting' ) && $query->get( 'paged' ) > 1 )
+	) {
+		$query->set_404();
+		status_header( 404 );
+		nocache_headers();
+	}
 
-		return $posts;
-	},
-	10,
-	2
-);
+	return $posts;
+}
 
 /**
  * Adds custom classes to the array of post classes.
@@ -135,7 +147,6 @@ function make_home_site_classes( $classes, $class, $id ) {
 	$classes[] = sanitize_html_class( 'make-' . get_post( $id )->post_name );
 	return $classes;
 }
-add_filter( 'post_class', 'make_home_site_classes', 10, 3 );
 
 /**
  * Set page name for front page title.
@@ -151,7 +162,6 @@ function make_add_frontpage_name_to_title( $parts ) {
 
 	return $parts;
 }
-add_filter( 'document_title_parts', 'make_add_frontpage_name_to_title' );
 
 /**
  * Noindex the post_type behind the site listing.
@@ -163,5 +173,3 @@ function make_noindex( $noindex ) {
 
 	return $noindex;
 }
-add_filter( 'wporg_noindex_request', 'make_noindex' );
-
