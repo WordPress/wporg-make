@@ -7,10 +7,15 @@
 	"private": true,
 	"devDependencies": {
 		"@wordpress/env": "9.7.0",
-		"@wordpress/scripts": "27.6.0"
+		"@wordpress/scripts": "27.9.0",
+		"@wordpress/stylelint-config": "21.34.0"
 	},
 	"scripts": {
+		"build": "yarn workspaces run build",
 		"build:theme": "yarn workspace wporg-make-2024 build",
+		"lint": "yarn lint:css && yarn lint:js && yarn lint:php",
+		"lint:css": "yarn workspaces run lint:css",
+		"lint:js": "yarn workspaces run lint:js",
 		"lint:php": "composer lint ./source/wp-content/themes/wporg-make-2024",
 		"setup:tools": "yarn && composer install && TEXTDOMAIN=make-wporg composer exec update-configs",
 		"setup:wp": "wp-env run cli bash env/setup.sh",
