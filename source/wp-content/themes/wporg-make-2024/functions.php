@@ -3,6 +3,11 @@
 namespace WordPressdotorg\Theme\Make_2024;
 
 /**
+ * Blocks.
+ */
+require_once __DIR__ . '/inc/block-hooks.php';
+
+/**
  * Actions and filters.
  */
 add_action( 'after_setup_theme', __NAMESPACE__ . '\make_setup_theme' );
@@ -11,6 +16,7 @@ add_action( 'wp_enqueue_scripts', __NAMESPACE__ . '\make_enqueue_scripts' );
 
 add_filter( 'document_title_parts', __NAMESPACE__ . '\make_add_frontpage_name_to_title' );
 add_filter( 'post_class', __NAMESPACE__ . '\make_home_site_classes', 10, 3 );
+add_filter( 'post_type_link', __NAMESPACE__ . '\replace_make_site_permalink', 10, 2 );
 add_filter( 'the_posts', __NAMESPACE__ . '\make_handle_non_post_routes', 10, 2 );
 add_filter( 'wporg_block_navigation_menus', __NAMESPACE__ . '\add_site_navigation_menus' );
 add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\make_noindex' );
@@ -27,7 +33,7 @@ function make_enqueue_scripts() {
 	wp_enqueue_style(
 		'wporg-make-2024-style',
 		$style_uri,
-		array( 'wporg-parent-2021-style', 'wporg-global-fonts' ),
+		array( 'wporg-parent-2021-style', 'wporg-global-fonts', 'dashicons' ),
 		filemtime( $style_path )
 	);
 	wp_style_add_data( 'wporg-make-2024-style', 'path', $style_path );
@@ -172,4 +178,26 @@ function make_noindex( $noindex ) {
 	}
 
 	return $noindex;
+}
+
+/**
+ * Filters to replace '/make_site/' permalinks with the corresponding Make site URL.
+ *
+ * @param string  $permalink The post's permalink.
+ * @param WP_Post $post The post object.
+ * @return string The filtered permalink.
+ */
+function replace_make_site_permalink( $permalink, $post ) {
+	if ( false !== strpos( $permalink, 'make_site' ) ) {
+		$makesites = make_site_get_network_sites();
+
+		$make_site_id = get_post_meta( $post->ID, 'make_site_id', true );
+		$url = $makesites[ $make_site_id ];
+
+		if ( $url ) {
+			$permalink = $url;
+		}
+	}
+
+	return $permalink;
 }
