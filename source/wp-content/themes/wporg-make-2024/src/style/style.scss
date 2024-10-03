@@ -194,3 +194,9 @@
 		}
 	}
 }
+
+// Temporary fix hiding the header section in page content, for example on /meetings.
+// Can be removed after launch.
+.header-section {
+	display: none;
+}

@@ -29,6 +29,10 @@ function init() {
  * @return string Returns the block markup.
  */
 function render( $attributes, $content, $block ) {
+	if ( ! isset( $block->context['postId'] ) || ! shortcode_exists( 'meeting_time' ) ) {
+		return '';
+	}
+
 	$post_id = $block->context['postId'];
 	$team = get_post_field( 'post_title', $post_id );
 

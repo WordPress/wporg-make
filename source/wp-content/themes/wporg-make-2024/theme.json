@@ -137,8 +137,8 @@
 			"core/post-title": {
 				"typography": {
 					"fontFamily": "var(--wp--preset--font-family--eb-garamond)",
-					"fontSize": "22px",
-					"lineHeight": "1.81",
+					"fontSize": "var(--wp--custom--heading--level-1--typography--font-size)",
+					"lineHeight": "var(--wp--custom--heading--level-1--typography--line-height)",
 					"fontWeight": "400"
 				}
 			}
