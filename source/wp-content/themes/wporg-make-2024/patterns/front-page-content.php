@@ -47,15 +47,7 @@
 
 	<!-- wp:post-template {"style":{"spacing":{"blockGap":"0"}},"layout":{"type":"grid","columnCount":3}} -->
 
-		<!-- wp:group {"style":{"spacing":{"padding":{"top":"var:preset|spacing|20","bottom":"var:preset|spacing|20","left":"var:preset|spacing|20","right":"var:preset|spacing|20"}},"border":{"width":"1px"},"dimensions":{"minHeight":"100%"}},"borderColor":"light-grey-1","layout":{"type":"flex","orientation":"vertical","justifyContent":"stretch"}} -->
-		<div class="wp-block-group has-border-color has-light-grey-1-border-color" style="border-width:1px;min-height:100%;padding-top:var(--wp--preset--spacing--20);padding-right:var(--wp--preset--spacing--20);padding-bottom:var(--wp--preset--spacing--20);padding-left:var(--wp--preset--spacing--20)">
-
-			<!-- wp:post-title {"isLink":true,"style":{"spacing":{"margin":{"top":"0","bottom":"0"}},"elements":{"link":{"color":{"text":"var:preset|color|charcoal-1"}}}}} /-->
-
-			<!-- wp:post-content {"style":{"typography":{"lineHeight":"1.7"}},"fontSize":"small"} /-->
-
-		</div>
-		<!-- /wp:group -->
+		<!-- wp:template-part {"slug":"card-team","className":"has-display-contents"} /-->
 
 	<!-- /wp:post-template -->
 

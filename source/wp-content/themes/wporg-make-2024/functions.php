@@ -5,6 +5,7 @@ namespace WordPressdotorg\Theme\Make_2024;
 /**
  * Blocks.
  */
+require_once __DIR__ . '/src/meeting-time/index.php';
 require_once __DIR__ . '/inc/block-hooks.php';
 
 /**
@@ -192,7 +193,7 @@ function replace_make_site_permalink( $permalink, $post ) {
 		$makesites = make_site_get_network_sites();
 
 		$make_site_id = get_post_meta( $post->ID, 'make_site_id', true );
-		$url = $makesites[ $make_site_id ];
+		$url = isset( $makesites[ $make_site_id ] ) ? $makesites[ $make_site_id ] : '';
 
 		if ( $url ) {
 			$permalink = $url;
