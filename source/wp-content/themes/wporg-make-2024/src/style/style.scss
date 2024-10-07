@@ -200,3 +200,16 @@
 .header-section {
 	display: none;
 }
+
+// Temporary styles to hide some of the old content for /contribute.
+// Can be removed after launch.
+.page-contribute-site-header,
+.page-contribute-page-title {
+	display: none;
+}
+// Content padding and margin are handled by the template now.
+.page-contribute-content {
+	padding-left: unset !important;
+	padding-right: unset !important;
+	margin-top: unset !important;
+}
