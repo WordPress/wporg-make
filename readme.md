@@ -50,6 +50,12 @@ The codebase and development environment for the make.WordPress.org home theme.
 
 1. Log in with username `admin` and password `password`.
 
+### Plugins
+
+#### Meeting Calendar
+
+If you wish to work with the Meeting Calendar plugin, you must build it first. Follow the `Getting Started` instructions in the plugin's readme.
+
 ### Environment management
 
 These must be run in the project's root folder, _not_ in theme/plugin subfolders.

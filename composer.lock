@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ff39f0104c41aa6d0bfa7dd80f69ad62",
+    "content-hash": "cff84345c8e1a269a64d966710636ad7",
     "packages": [],
     "packages-dev": [
         {
@@ -2565,6 +2565,47 @@
             "homepage": "https://wordpress.org/plugins/wordpress-importer/"
         },
         {
+            "name": "wporg/meeting-calendar",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/WordPress/meeting-calendar.git",
+                "reference": "6f85255801a0d373525255add2284ac8a1b65ae0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/WordPress/meeting-calendar/zipball/6f85255801a0d373525255add2284ac8a1b65ae0",
+                "reference": "6f85255801a0d373525255add2284ac8a1b65ae0",
+                "shasum": ""
+            },
+            "require-dev": {
+                "dealerdirect/phpcodesniffer-composer-installer": "^0.7.0",
+                "phpcompatibility/phpcompatibility-wp": "*",
+                "phpunit/phpunit": "7.*",
+                "wp-coding-standards/wpcs": "2.*",
+                "wp-phpunit/wp-phpunit": "^5.4"
+            },
+            "default-branch": true,
+            "type": "wordpress-plugin",
+            "scripts": {
+                "format": [
+                    "phpcbf -p"
+                ],
+                "lint": [
+                    "phpcs"
+                ]
+            },
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "homepage": "https://make.wordpress.org/meetings",
+            "support": {
+                "issues": "https://github.com/Automattic/meeting-calendar/issues",
+                "source": "https://github.com/WordPress/meeting-calendar/tree/master"
+            },
+            "time": "2024-10-08T03:02:57+00:00"
+        },
+        {
             "name": "wporg/wporg-mu-plugins",
             "version": "dev-build",
             "source": {
@@ -2677,6 +2718,7 @@
     "minimum-stability": "stable",
     "stability-flags": {
         "wordpress/wporg-contributor-orientation": 20,
+        "wporg/meeting-calendar": 20,
         "wporg/wporg-repo-tools": 20,
         "wporg/wporg-mu-plugins": 20,
         "wporg/wporg-parent-2021": 20

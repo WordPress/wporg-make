@@ -35,6 +35,10 @@
 		},
 		{
 			"type": "vcs",
+			"url": "git@github.com:WordPress/meeting-calendar.git"
+		},
+		{
+			"type": "vcs",
 			"url": "git@github.com:WordPress/wporg-contributor-orientation.git"
 		},
 		{
@@ -99,6 +103,7 @@
 		"wp-phpunit/wp-phpunit": "^5.4",
 		"wpackagist-plugin/gutenberg": "*",
 		"wpackagist-plugin/wordpress-importer": "*",
+		"wporg/meeting-calendar": "dev-master",
 		"wporg/wporg-repo-tools": "dev-trunk",
 		"wporg/wporg-mu-plugins": "dev-build",
 		"wporg/wporg-parent-2021": "dev-build"
