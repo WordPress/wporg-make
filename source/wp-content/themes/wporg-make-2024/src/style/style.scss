@@ -4,15 +4,6 @@
  */
 
 .wporg-make-team-grid {
-	%blue-circle {
-		display: block;
-		content: "";
-		width: 32px;
-		height: 32px;
-		border: 1px solid var(--wp--preset--color--blueberry-1);
-		border-radius: 50%;
-	}
-
 	.make_site-placeholder {
 		display: none;
 	}
@@ -41,9 +32,6 @@
 				align-items: center;
 
 				&::after {
-
-					@extend %blue-circle;
-
 					display: block;
 					/* stylelint-disable-next-line font-family-no-missing-generic-family-keyword */
 					font-family: dashicons;
@@ -149,37 +137,19 @@
 
 		&.make-openverse .wp-block-post-title,
 		&.make-performance .wp-block-post-title {
-			display: grid;
-			grid-template-columns: 1fr;
-			grid-template-rows: 1fr;
-
-			&::after {
-
-				@extend %blue-circle;
-				grid-column: 1 / 2;
-				grid-row: 1 / 2;
-				justify-self: end;
-				align-self: center;
-			}
-
-			a {
-				grid-column: 1 / 2;
-				grid-row: 1 / 2;
-
-				&::after {
-					font-family: inherit;
-					content: ".";
-					text-indent: -999px;
-					width: 20px;
-					height: 20px;
-					mask-repeat: no-repeat;
-					mask-position: bottom;
-					mask-size: 20px;
-					display: inline-block;
-					background-color: currentColor;
-					vertical-align: top;
-					margin-right: 6px;
-				}
+			a::after {
+				font-family: inherit;
+				content: ".";
+				text-indent: -999px;
+				width: 20px;
+				height: 20px;
+				mask-repeat: no-repeat;
+				mask-position: bottom;
+				mask-size: 20px;
+				display: inline-block;
+				background-color: currentColor;
+				vertical-align: top;
+				margin-right: 6px;
 			}
 		}
 
