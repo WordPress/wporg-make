@@ -3,6 +3,12 @@
  * templates or theme.json settings.
  */
 
+:root {
+	--wp-components-color-accent: var(--wp--preset--color--blueberry-1);
+	--wp-components-color-accent-inverted: var(--wp--preset--color--white);
+	--wp-components-color-accent-darker-10: var(--wp--preset--color--deep-blueberry);
+}
+
 .wporg-make-team-grid {
 	.make_site-placeholder {
 		display: none;
