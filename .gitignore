@@ -25,6 +25,7 @@ phpcs.xml.dist
 /source/wp-content/mu-plugins/*
 /source/wp-content/plugins/*
 /source/wp-content/themes/*
+/source/wp-includes/*
 
 # ...except the actual source of this project.
 !/source/wp-content/themes
