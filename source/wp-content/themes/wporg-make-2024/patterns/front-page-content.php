@@ -10,17 +10,9 @@
 <!-- wp:group {"style":{"spacing":{"margin":{"bottom":"var:preset|spacing|30"}}},"layout":{"type":"constrained","justifyContent":"left","contentSize":"774px"}} -->
 <div class="wp-block-group" style="margin-bottom:var(--wp--preset--spacing--30)">
 
-	<!-- wp:paragraph -->
-	<p><?php esc_html_e( 'Whether you’re a budding developer, a designer, or just like helping out, we’re always looking for people to help make WordPress even better.', 'make-wporg' ); ?></p>
-	<!-- /wp:paragraph -->
-
-	<!-- wp:heading -->
-	<h2 class="wp-block-heading"><?php esc_html_e( 'Teams', 'make-wporg' ); ?></h2>
-		<!-- /wp:heading -->
-
-	<!-- wp:paragraph -->
-	<p><?php esc_html_e( 'If you want to get involved in WordPress, this is the place to start. We’ve got blogs for each contributor group, general news, and upcoming events.', 'make-wporg' ); ?></p>
-	<!-- /wp:paragraph -->
+	<!-- wp:heading {"style":{"spacing":{"margin":{"top":"0"}}}} -->
+	<h2 class="wp-block-heading" style="margin-top:0"><?php esc_html_e( 'Teams', 'make-wporg' ); ?></h2>
+	<!-- /wp:heading -->
 
 	<!-- wp:wporg/notice {"type":"info"} -->
 	<div class="wp-block-wporg-notice is-info-notice">
