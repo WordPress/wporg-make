@@ -26,141 +26,120 @@
 	}
 }
 
-.wporg-make-team-grid {
-	.make_site-placeholder {
-		display: none;
-	}
-
-	@media (min-width: 601px) {
-		.make_site-placeholder {
-			display: initial;
-		}
-
-		.make_site-placeholder-span-2 {
-			grid-column: 2 / 4;
-		}
-	}
-
+.wporg-make-team-list {
 	.make_site {
-		margin: -0.5px;
-
-		&:hover:not(.make_site-placeholder) {
-			background-color: var(--wp--preset--color--light-grey-2);
+		&:last-child [style*="border-bottom"] {
+			border-bottom: none !important;
 		}
 
 		.wp-block-post-title {
-			a {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
+			display: flex;
+			align-items: flex-start;
+			gap: 5px;
 
-				&::after {
-					display: block;
-					/* stylelint-disable-next-line font-family-no-missing-generic-family-keyword */
-					font-family: dashicons;
-					content: "\f109";
-					font-weight: 400;
-					font-size: 20px;
-					line-height: 32px;
-					text-align: center;
-					-webkit-font-smoothing: antialiased;
-					-moz-osx-font-smoothing: grayscale;
-					color: var(--wp--preset--color--blueberry-1);
-				}
-
-				&:hover {
-					text-decoration: none;
-				}
+			&::before {
+				display: block;
+				/* stylelint-disable-next-line font-family-no-missing-generic-family-keyword */
+				font-family: dashicons;
+				content: "\f109";
+				font-weight: 400;
+				font-size: 20px;
+				line-height: 24px;
+				width: 24px;
+				text-align: center;
+				-webkit-font-smoothing: antialiased;
+				-moz-osx-font-smoothing: grayscale;
+				color: var(--wp--preset--color--blueberry-1);
 			}
 		}
 
-		&.make-core .wp-block-post-title a::after {
+		&.make-core .wp-block-post-title::before {
 			content: "\f475";
 		}
 
-		&.make-mobile .wp-block-post-title a::after {
+		&.make-mobile .wp-block-post-title::before {
 			content: "\f470";
 		}
 
-		&.make-design .wp-block-post-title a::after {
+		&.make-design .wp-block-post-title::before {
 			content: "\f309";
 		}
 
-		&.make-accessibility .wp-block-post-title a::after {
+		&.make-accessibility .wp-block-post-title::before {
 			content: "\f483";
 		}
 
-		&.make-polyglots .wp-block-post-title a::after {
+		&.make-polyglots .wp-block-post-title::before {
 			content: "\f326";
 		}
 
-		&.make-support .wp-block-post-title a::after {
+		&.make-support .wp-block-post-title::before {
 			content: "\f125";
 		}
 
-		&.make-themes .wp-block-post-title a::after {
+		&.make-themes .wp-block-post-title::before {
 			content: "\f100";
 		}
 
-		&.make-plugins .wp-block-post-title a::after {
+		&.make-plugins .wp-block-post-title::before {
 			content: "\f106";
 		}
 
-		&.make-docs .wp-block-post-title a::after {
+		&.make-docs .wp-block-post-title::before {
 			content: "\f105";
 		}
 
-		&.make-community .wp-block-post-title a::after {
+		&.make-community .wp-block-post-title::before {
 			content: "\f307";
 		}
 
-		&.make-meta .wp-block-post-title a::after {
+		&.make-meta .wp-block-post-title::before {
 			content: "\f325";
 		}
 
-		&.make-training .wp-block-post-title a::after {
+		&.make-training .wp-block-post-title::before {
 			content: "\f118";
 		}
 
-		&.make-flow .wp-block-post-title a::after {
+		&.make-flow .wp-block-post-title::before {
 			content: "\f115";
 		}
 
-		&.make-tv .wp-block-post-title a::after {
+		&.make-tv .wp-block-post-title::before {
 			content: "\f235";
 		}
 
-		&.make-marketing .wp-block-post-title a::after {
+		&.make-marketing .wp-block-post-title::before {
 			content: "\f130";
 		}
 
-		&.make-media-corps .wp-block-post-title a::after {
+		&.make-media-corps .wp-block-post-title::before {
 			content: "\f130";
 		}
 
-		&.make-cli .wp-block-post-title a::after {
+		&.make-cli .wp-block-post-title::before {
 			content: "\f345";
 		}
 
-		&.make-hosting .wp-block-post-title a::after {
+		&.make-hosting .wp-block-post-title::before {
 			content: "\f176";
 		}
 
-		&.make-tide .wp-block-post-title a::after {
+		&.make-tide .wp-block-post-title::before {
 			content: "\f10d";
 		}
 
-		&.make-photos .wp-block-post-title a::after {
+		&.make-photos .wp-block-post-title::before {
 			content: "\f306";
 		}
 
-		&.make-sustainability .wp-block-post-title a::after {
+		&.make-sustainability .wp-block-post-title::before {
 			content: "\f11f";
 		}
 
 		&.make-openverse .wp-block-post-title,
 		&.make-performance .wp-block-post-title {
-			a::after {
+			&::before {
 				font-family: inherit;
 				content: ".";
 				text-indent: -999px;
@@ -172,16 +151,16 @@
 				display: inline-block;
 				background-color: currentColor;
 				vertical-align: top;
-				margin-right: 6px;
+				margin-right: 2px;
 			}
 		}
 
-		&.make-openverse .wp-block-post-title a::after {
+		&.make-openverse .wp-block-post-title::before {
 
 			@extend %make-openverse-icon;
 		}
 
-		&.make-performance .wp-block-post-title a::after {
+		&.make-performance .wp-block-post-title::before {
 
 			@extend %make-performance-icon;
 		}
@@ -189,13 +168,13 @@
 }
 
 // Temporary fix hiding the header section in page content, for example on /meetings.
-// Can be removed after launch.
+// Can be removed before launch.
 .header-section {
 	display: none;
 }
 
 // Temporary styles to hide some of the old content for /contribute.
-// Can be removed after launch.
+// Can be removed before launch.
 .page-contribute-site-header,
 .page-contribute-page-title {
 	display: none;

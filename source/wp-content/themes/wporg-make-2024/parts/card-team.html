@@ -1,17 +1,29 @@
-<!-- wp:group {"style":{"spacing":{"padding":{"top":"var:preset|spacing|20","bottom":"var:preset|spacing|20","left":"var:preset|spacing|20","right":"var:preset|spacing|20"}},"border":{"width":"1px"},"dimensions":{"minHeight":"100%"}},"borderColor":"light-grey-1","layout":{"type":"flex","orientation":"vertical","justifyContent":"stretch","verticalAlignment":"space-between"}} -->
-<div class="wp-block-group has-border-color has-light-grey-1-border-color" style="border-width:1px;min-height:100%;padding-top:var(--wp--preset--spacing--20);padding-right:var(--wp--preset--spacing--20);padding-bottom:var(--wp--preset--spacing--20);padding-left:var(--wp--preset--spacing--20)">
+<!-- wp:columns {"style":{"border":{"bottom":{"color":"var:preset|color|light-grey-1","width":"1px"}},"spacing":{"padding":{"top":"var:preset|spacing|30","bottom":"var:preset|spacing|30"},"blockGap":{"left":"40px"}}}} -->
+<div class="wp-block-columns" style="border-bottom-color:var(--wp--preset--color--light-grey-1);border-bottom-width:1px;padding-top:var(--wp--preset--spacing--30);padding-bottom:var(--wp--preset--spacing--30)">
+	
+	<!-- wp:column {"width":"19%"} -->
+	<div class="wp-block-column" style="flex-basis:19%">
 
-	<!-- wp:group {"layout":{"type":"constrained"}} -->
-	<div class="wp-block-group">
-
-		<!-- wp:post-title {"level":3,"isLink":true,"style":{"spacing":{"margin":{"top":"0","bottom":"0"}},"elements":{"link":{"color":{"text":"var:preset|color|charcoal-1"}}},"typography":{"fontSize":"22px","lineHeight":"1.8"}}} /-->
-
-		<!-- wp:post-content {"style":{"typography":{"lineHeight":"1.7"}},"fontSize":"small"} /-->
+		<!-- wp:post-title {"level":3,"isLink":true,"style":{"spacing":{"margin":{"top":"0","bottom":"0"}},"typography":{"fontStyle":"normal","fontWeight":"600"},"elements":{"link":{"color":{"text":"var:preset|color|blueberry-1"}}}},"textColor":"blueberry-1","fontSize":"heading-6","fontFamily":"inter"} /-->
 
 	</div>
-	<!-- /wp:group -->
+	<!-- /wp:column -->
+	
+	<!-- wp:column -->
+	<div class="wp-block-column">
 
-	<!-- wp:wporg-make/meeting-time {"fontSize":"extra-small"} /-->
+		<!-- wp:post-content {"fontSize":"small"} /-->
 
+	</div>
+	<!-- /wp:column -->
+	
+	<!-- wp:column {"width":"36%"} -->
+	<div class="wp-block-column" style="flex-basis:36%">
+
+		<!-- wp:wporg-make/meeting-time {"fontSize":"extra-small"} /-->
+
+	</div>
+	<!-- /wp:column -->
+	
 </div>
-<!-- /wp:group -->
+<!-- /wp:columns -->

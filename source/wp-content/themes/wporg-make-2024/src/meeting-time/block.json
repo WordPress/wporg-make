@@ -33,5 +33,6 @@
 		}
 	},
 	"textdomain": "make-wporg",
-	"editorScript": "file:./index.js"
+	"editorScript": "file:./index.js",
+	"viewStyle": "file:./style-index.css"
 }

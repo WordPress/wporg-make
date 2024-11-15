@@ -6,7 +6,6 @@ namespace WordPressdotorg\Theme\Make_2024;
  * Blocks.
  */
 require_once __DIR__ . '/src/meeting-time/index.php';
-require_once __DIR__ . '/inc/block-hooks.php';
 
 /**
  * Actions and filters.
