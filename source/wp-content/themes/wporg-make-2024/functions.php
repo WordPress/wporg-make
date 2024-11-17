@@ -63,43 +63,95 @@ function make_setup_theme() {
 }
 
 /**
+ * Gets the navigation menu items for the handbook section.
+ *
+ * @return array Array of menu items with 'label' and 'url' keys.
+ */
+function get_handbook_navigation_menu() {
+	$local_nav_menu_locations = get_nav_menu_locations();
+	$local_nav_menu_object = isset( $local_nav_menu_locations['primary'] )
+		? wp_get_nav_menu_object( $local_nav_menu_locations['primary'] )
+		: false;
+
+	if ( ! $local_nav_menu_object ) {
+		return array();
+	}
+
+	$menu_items = wp_get_nav_menu_items( $local_nav_menu_object->term_id );
+
+	if ( ! $menu_items || empty( $menu_items ) ) {
+		return array();
+	}
+
+	return array_map(
+		function( $menu_item ) {
+			return array(
+				'label' => esc_html( $menu_item->title ),
+				'url' => esc_url( $menu_item->url ),
+			);
+		},
+		// Limit local nav items to 6
+		array_slice( $menu_items, 0, 6 )
+	);
+}
+
+/**
+ * Add a login link to the local nav if there is no logged in user.
+ */
+function _maybe_add_login_item_to_menu( $menu ) {
+	if ( is_user_logged_in() ) {
+		return $menu;
+	}
+
+	global $wp;
+	$redirect_url = home_url( $wp->request );
+	$login_item = array(
+		'label' => __( 'Log in', 'make-wporg' ),
+		'url' => wp_login_url( $redirect_url ),
+	);
+
+	if ( $menu ) {
+		$login_item['className'] = 'has-separator';
+		$menu[] = $login_item;
+	} else {
+		$menu = array( $login_item );
+	}
+
+	return $menu;
+}
+
+/**
  * Provide a list of local navigation menus.
  */
 function add_site_navigation_menus( $menus ) {
-	$menu = array(
-		array(
-			'label' => __( 'Meetings', 'make-wporg' ),
-			'url'   => site_url( '/meetings/' ),
-		),
-		array(
-			'label' => __( 'Team Updates', 'make-wporg' ),
-			'url'   => site_url( '/updates/' ),
-		),
-		array(
-			'label' => __( 'Project Updates', 'make-wporg' ),
-			'url'   => site_url( '/project/' ),
-		),
-		array(
-			'label'     => __( 'Five for the Future', 'make-wporg' ),
-			'url'       => 'https://wordpress.org/five-for-the-future/',
-		),
-		array(
-			'label' => __( 'Contributor Handbook', 'make-wporg' ),
-			'url'   => site_url( '/handbook/' ),
-		),
-	);
-
-	if ( ! is_user_logged_in() ) {
-		global $wp;
-		$redirect_url = home_url( $wp->request );
-		$menu[] = array(
-			'label' => __( 'Log in', 'make-wporg' ),
-			'url' => wp_login_url( $redirect_url ),
-			'className' => 'has-separator',
+	if ( is_singular( 'handbook' ) ) {
+		$menus['breathe'] = _maybe_add_login_item_to_menu( get_handbook_navigation_menu() );
+	} else {
+		$menus['make'] = _maybe_add_login_item_to_menu(
+			array(
+				array(
+					'label' => __( 'Meetings', 'make-wporg' ),
+					'url'   => site_url( '/meetings/' ),
+				),
+				array(
+					'label' => __( 'Team Updates', 'make-wporg' ),
+					'url'   => site_url( '/updates/' ),
+				),
+				array(
+					'label' => __( 'Project Updates', 'make-wporg' ),
+					'url'   => site_url( '/project/' ),
+				),
+				array(
+					'label' => __( 'Five for the Future', 'make-wporg' ),
+					'url'   => 'https://wordpress.org/five-for-the-future/',
+				),
+				array(
+					'label' => __( 'Contributor Handbook', 'make-wporg' ),
+					'url'   => site_url( '/handbook/' ),
+				),
+			)
 		);
 	}
-
-	$menus['make'] = $menu;
 
 	return $menus;
 }
