@@ -21,8 +21,10 @@ add_filter( 'post_class', __NAMESPACE__ . '\make_home_site_classes', 10, 3 );
 add_filter( 'post_type_link', __NAMESPACE__ . '\replace_make_site_permalink', 10, 2 );
 add_filter( 'previous_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link', 10, 5 );
 add_filter( 'render_block_core/search', __NAMESPACE__ . '\modify_handbook_search_block_action', 10, 2 );
+add_filter( 'render_block_data', __NAMESPACE__ . '\modify_header_template_part' );
 add_filter( 'the_posts', __NAMESPACE__ . '\make_handle_non_post_routes', 10, 2 );
 add_filter( 'wporg_block_navigation_menus', __NAMESPACE__ . '\add_site_navigation_menus' );
+add_filter( 'wporg_block_site_breadcrumbs', __NAMESPACE__ . '\set_site_breadcrumbs' );
 add_filter( 'wporg_handbook_toc_should_add_toc', '__return_false' );
 add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\make_noindex' );
 
@@ -374,4 +376,83 @@ function get_adjacent_handbook_post_link( $output, $format, $link, $post, $adjac
 	$output = str_replace( '%link', $inlink, $format );
 
 	return $output;
+}
+
+/**
+ * Update header template based on current query.
+ *
+ * @param array $parsed_block The block being rendered.
+ *
+ * @return array The updated block.
+ */
+function modify_header_template_part( $parsed_block ) {
+	if (
+		'core/template-part' === $parsed_block['blockName'] &&
+		! empty( $parsed_block['attrs']['slug'] ) &&
+		str_starts_with( $parsed_block['attrs']['slug'], 'header' )
+	) {
+		if (
+			function_exists( 'wporg_is_handbook' ) &&
+			wporg_is_handbook() &&
+			! wporg_is_handbook_landing_page()
+		) {
+			$parsed_block['attrs']['slug'] = 'header-handbook-child';
+		}
+	}
+
+	return $parsed_block;
+}
+
+/**
+ * Filters breadcrumb items for the site-breadcrumb block.
+ * Breadcrumbs are only displayed on the handbook pages, so this logic is specific to that usage.
+ *
+ * @param array $breadcrumbs The current breadcrumbs.
+ *
+ * @return array The modified breadcrumbs.
+ */
+function set_site_breadcrumbs( $breadcrumbs ) {
+	if ( empty( $breadcrumbs ) ) {
+		return $breadcrumbs;
+	}
+
+	// Change the title of the first breadcrumb to 'Home'.
+	$breadcrumbs[0]['title'] = 'Home';
+
+	// Insert the handbook home page as the second breadcrumb.
+	// Create the handbook homepage breadcrumb.
+	$handbook_home_breadcrumb = array(
+		'url' => wporg_get_current_handbook_home_url(),
+		'title' => 'Handbook',
+	);
+
+	// Insert the handbook homepage breadcrumb as the second breadcrumb.
+	array_splice( $breadcrumbs, 1, 0, array( $handbook_home_breadcrumb ) );
+
+	$post_id = get_the_ID();
+
+	// Add the ancestors of the current page to the breadcrumbs.
+	$ancestors = get_post_ancestors( $post_id );
+
+	if ( ! empty( $ancestors ) ) {
+		foreach ( $ancestors as $ancestor ) {
+			$ancestor_post = get_post( $ancestor );
+
+			$ancestor_breadcrumb = array(
+				'url' => get_permalink( $ancestor_post ),
+				'title' => get_the_title( $ancestor_post ),
+			);
+
+			// Insert the ancestor breadcrumb after the handbook home breadcrumb.
+			array_splice( $breadcrumbs, 2, 0, array( $ancestor_breadcrumb ) );
+		}
+	}
+
+	// Ensure breadcrumbs are displayed only when there are at least 3 levels.
+	$breadcrumb_level = count( $breadcrumbs );
+	if ( $breadcrumb_level < 3 ) {
+		$breadcrumbs = array();
+	}
+
+	return $breadcrumbs;
 }
