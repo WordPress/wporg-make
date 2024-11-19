@@ -37,11 +37,11 @@
 		<div class="wp-block-group" style="min-height:100%;padding-top:0;padding-right:var(--wp--preset--spacing--edge-space);padding-bottom:var(--wp--preset--spacing--30)">
 
 			<!-- wp:paragraph {"style":{"typography":{"lineHeight":"1.7"}},"fontSize":"large"} -->
-			<p class="has-large-font-size" style="line-height:1.7"><?php esc_html_e( 'Whether you’re a budding developer, a designer, or just like helping out, we’re always looking for people to help make WordPress even better.', 'make-wporg' ); ?></p>
+			<p class="has-large-font-size" style="line-height:1.7"><?php esc_html_e( 'Whether you’re a developer, a designer, or want to push the community forward, we’re always looking for people to join us in making WordPress even better.', 'make-wporg' ); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:paragraph -->
-			<p><?php esc_html_e( 'If you want to get involved in WordPress, this is the place to be. We’ve got blogs for each contributor group, general news, and upcoming events.', 'make-wporg' ); ?></p>
+			<p><?php esc_html_e( 'From core development and design to support and documentation, every contributor team has a blog, with general news, upcoming events, and opportunities to get started.', 'make-wporg' ); ?></p>
 			<!-- /wp:paragraph -->
 
 		</div>
