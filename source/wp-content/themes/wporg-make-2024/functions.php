@@ -22,6 +22,7 @@ add_filter( 'the_posts', __NAMESPACE__ . '\make_handle_non_post_routes', 10, 2 )
 add_filter( 'wporg_block_navigation_menus', __NAMESPACE__ . '\add_site_navigation_menus' );
 add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\make_noindex' );
 add_filter( 'render_block_core/search', __NAMESPACE__ . '\modify_handbook_search_block_action', 10, 2 );
+add_filter( 'wporg_handbook_toc_should_add_toc', '__return_false' );
 
 /**
  * Enqueue theme styles.
