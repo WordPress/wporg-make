@@ -23,6 +23,8 @@ add_filter( 'wporg_block_navigation_menus', __NAMESPACE__ . '\add_site_navigatio
 add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\make_noindex' );
 add_filter( 'render_block_core/search', __NAMESPACE__ . '\modify_handbook_search_block_action', 10, 2 );
 add_filter( 'wporg_handbook_toc_should_add_toc', '__return_false' );
+add_filter( 'next_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link', 10, 5 );
+add_filter( 'previous_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link', 10, 5 );
 
 /**
  * Enqueue theme styles.
@@ -298,3 +300,78 @@ add_shortcode(
 		return '';
 	}
 );
+
+/**
+ * Switch out the destination for next/prev links to mirror the Chapter List order.
+ *
+ * @param string  $output   The adjacent post link.
+ * @param string  $format   Link anchor format.
+ * @param string  $link     Link permalink format.
+ * @param WP_Post $post     The adjacent post.
+ * @param string  $adjacent Whether the post is previous or next.
+ *
+ * @return string Updated link tag.
+ */
+function get_adjacent_handbook_post_link( $output, $format, $link, $post, $adjacent ) {
+	if ( function_exists( 'wporg_is_handbook' ) && ! wporg_is_handbook() ) {
+		return $output;
+	}
+
+	$post_id = get_the_ID();
+	$pages   = get_pages(
+		array(
+			'sort_column' => 'menu_order, title',
+			'post_type'   => get_post_type( $post_id ),
+		)
+	);
+	$is_previous = 'previous' === $adjacent;
+
+	foreach ( $pages as $i => $page ) {
+		if ( $page->ID === $post_id ) {
+			$adj_index = $is_previous ? $i - 1 : $i + 1;
+			break;
+		}
+	}
+
+	if ( $adj_index < count( $pages ) && $adj_index > 0 ) {
+		$post = $pages[ $adj_index ];
+	} else {
+		return '';
+	}
+
+	$title = apply_filters( 'the_title', $post->post_title, $post->ID );
+	$url   = get_permalink( $post );
+
+	$screen_reader_content = sprintf(
+		$is_previous
+			? /* translators: %s: post title */
+			__( 'Previous: %s', 'make-wporg' )
+			: /* translators: %s: post title */
+			__( 'Next: %s', 'make-wporg' ),
+		$title
+	);
+
+	$content = str_replace(
+		'%title',
+		sprintf(
+			'<span aria-hidden="true" class="post-navigation-link__label">%1$s</span>
+			<span aria-hidden="true" class="post-navigation-link__title">%2$s</span>
+			<span class="screen-reader-text">%3$s</span>',
+			$is_previous ? __( 'Previous', 'make-wporg' ) : __( 'Next', 'make-wporg' ),
+			$title,
+			$screen_reader_content,
+		),
+		$link
+	);
+
+	$inlink = sprintf(
+		'<a href="%1$s" rel="%2$s">%3$s</a>',
+		$url,
+		$is_previous ? 'prev' : 'next',
+		$content
+	);
+
+	$output = str_replace( '%link', $inlink, $format );
+
+	return $output;
+}
