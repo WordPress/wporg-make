@@ -16,15 +16,15 @@ add_action( 'pre_get_posts', __NAMESPACE__ . '\make_query_mods' );
 add_action( 'wp_enqueue_scripts', __NAMESPACE__ . '\make_enqueue_scripts' );
 
 add_filter( 'document_title_parts', __NAMESPACE__ . '\make_add_frontpage_name_to_title' );
+add_filter( 'next_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link', 10, 5 );
 add_filter( 'post_class', __NAMESPACE__ . '\make_home_site_classes', 10, 3 );
 add_filter( 'post_type_link', __NAMESPACE__ . '\replace_make_site_permalink', 10, 2 );
+add_filter( 'previous_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link', 10, 5 );
+add_filter( 'render_block_core/search', __NAMESPACE__ . '\modify_handbook_search_block_action', 10, 2 );
 add_filter( 'the_posts', __NAMESPACE__ . '\make_handle_non_post_routes', 10, 2 );
 add_filter( 'wporg_block_navigation_menus', __NAMESPACE__ . '\add_site_navigation_menus' );
-add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\make_noindex' );
-add_filter( 'render_block_core/search', __NAMESPACE__ . '\modify_handbook_search_block_action', 10, 2 );
 add_filter( 'wporg_handbook_toc_should_add_toc', '__return_false' );
-add_filter( 'next_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link', 10, 5 );
-add_filter( 'previous_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link', 10, 5 );
+add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\make_noindex' );
 
 /**
  * Enqueue theme styles.
