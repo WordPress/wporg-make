@@ -6,6 +6,7 @@ namespace WordPressdotorg\Theme\Make_2024;
  * Blocks.
  */
 require_once __DIR__ . '/src/meeting-time/index.php';
+require_once __DIR__ . '/src/search-results-context/index.php';
 
 /**
  * Actions and filters.
@@ -20,6 +21,7 @@ add_filter( 'post_type_link', __NAMESPACE__ . '\replace_make_site_permalink', 10
 add_filter( 'the_posts', __NAMESPACE__ . '\make_handle_non_post_routes', 10, 2 );
 add_filter( 'wporg_block_navigation_menus', __NAMESPACE__ . '\add_site_navigation_menus' );
 add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\make_noindex' );
+add_filter( 'render_block_core/search', __NAMESPACE__ . '\modify_handbook_search_block_action', 10, 2 );
 
 /**
  * Enqueue theme styles.
@@ -124,7 +126,7 @@ function _maybe_add_login_item_to_menu( $menu ) {
  * Provide a list of local navigation menus.
  */
 function add_site_navigation_menus( $menus ) {
-	if ( is_singular( 'handbook' ) ) {
+	if ( is_singular( 'handbook' ) || is_search() ) {
 		$menus['breathe'] = _maybe_add_login_item_to_menu( get_handbook_navigation_menu() );
 	} else {
 		$menus['make'] = _maybe_add_login_item_to_menu(
@@ -166,24 +168,33 @@ function make_query_mods( $query ) {
 		$query->set( 'posts_per_page', 1 );
 	}
 
-	// There's nothing worth searching for on this site.
-	if ( ! is_admin() && $query->is_main_query() && $query->is_search() ) {
+	// There's nothing worth searching for on this site, unless it's a handbook search.
+	if ( ! is_admin() && $query->is_main_query() && $query->is_search() && function_exists( 'wporg_is_handbook' ) && ! wporg_is_handbook() ) {
 		$query->set_404();
 	}
 }
 
 /**
- * Ensure all non-post routes 404, as this site isn't like most others.
+ * Ensure all non-post and non-handbook routes 404, as this site isn't like most others.
  *
  * @param array    $posts The array of posts.
  * @param WP_Query $query The WP_Query instance (passed by reference).
  * @return array The filtered posts array.
  */
 function make_handle_non_post_routes( $posts, $query ) {
+	// Return early if admin, not main query, or handbook search
 	if (
-		( ! is_admin() && $query->is_main_query() && ! $query->is_robots() && ! $posts ) ||
-			// Pagination on the query is explicitly disabled, so this doesn't 404
-			( ! is_admin() && $query->is_main_query() && $query->is_post_type_archive( 'meeting' ) && $query->get( 'paged' ) > 1 )
+		is_admin() ||
+		! $query->is_main_query() ||
+		( $query->is_search() && function_exists( 'wporg_is_handbook' ) && wporg_is_handbook() )
+	) {
+		return $posts;
+	}
+
+	// Set 404 for empty results or paginated meeting archives
+	if (
+		( ! $query->is_robots() && ! $posts ) ||
+		( $query->is_post_type_archive( 'meeting' ) && $query->get( 'paged' ) > 1 )
 	) {
 		$query->set_404();
 		status_header( 404 );
@@ -252,4 +263,23 @@ function replace_make_site_permalink( $permalink, $post ) {
 	}
 
 	return $permalink;
+}
+
+/**
+ * Modify search block action URL for handbook pages
+ */
+function modify_handbook_search_block_action( $block_content, $block ) {
+	if ( is_singular( 'handbook' ) || is_search() ) {
+		$search_url = function_exists( 'wporg_is_handbook' ) && wporg_is_handbook()
+			? wporg_get_current_handbook_home_url()
+			: home_url( '/' );
+
+		$block_content = preg_replace(
+			'/<form[^>]*action="[^"]*"/',
+			'<form action="' . esc_url( $search_url ) . '"',
+			$block_content
+		);
+	}
+
+	return $block_content;
 }
