@@ -15,10 +15,16 @@ add_action( 'pre_get_posts', __NAMESPACE__ . '\make_query_mods' );
 add_action( 'wp_enqueue_scripts', __NAMESPACE__ . '\make_enqueue_scripts' );
 
 add_filter( 'document_title_parts', __NAMESPACE__ . '\make_add_frontpage_name_to_title' );
+add_filter( 'next_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link', 10, 5 );
 add_filter( 'post_class', __NAMESPACE__ . '\make_home_site_classes', 10, 3 );
 add_filter( 'post_type_link', __NAMESPACE__ . '\replace_make_site_permalink', 10, 2 );
+add_filter( 'previous_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link', 10, 5 );
+add_filter( 'render_block_core/search', __NAMESPACE__ . '\modify_handbook_search_block_action', 10, 2 );
+add_filter( 'render_block_data', __NAMESPACE__ . '\modify_header_template_part' );
 add_filter( 'the_posts', __NAMESPACE__ . '\make_handle_non_post_routes', 10, 2 );
 add_filter( 'wporg_block_navigation_menus', __NAMESPACE__ . '\add_site_navigation_menus' );
+add_filter( 'wporg_block_site_breadcrumbs', __NAMESPACE__ . '\set_site_breadcrumbs' );
+add_filter( 'wporg_handbook_toc_should_add_toc', '__return_false' );
 add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\make_noindex' );
 
 /**
@@ -63,43 +69,95 @@ function make_setup_theme() {
 }
 
 /**
+ * Gets the navigation menu items for the handbook section.
+ *
+ * @return array Array of menu items with 'label' and 'url' keys.
+ */
+function get_handbook_navigation_menu() {
+	$local_nav_menu_locations = get_nav_menu_locations();
+	$local_nav_menu_object = isset( $local_nav_menu_locations['primary'] )
+		? wp_get_nav_menu_object( $local_nav_menu_locations['primary'] )
+		: false;
+
+	if ( ! $local_nav_menu_object ) {
+		return array();
+	}
+
+	$menu_items = wp_get_nav_menu_items( $local_nav_menu_object->term_id );
+
+	if ( ! $menu_items || empty( $menu_items ) ) {
+		return array();
+	}
+
+	return array_map(
+		function( $menu_item ) {
+			return array(
+				'label' => esc_html( $menu_item->title ),
+				'url' => esc_url( $menu_item->url ),
+			);
+		},
+		// Limit local nav items to 6
+		array_slice( $menu_items, 0, 6 )
+	);
+}
+
+/**
+ * Add a login link to the local nav if there is no logged in user.
+ */
+function _maybe_add_login_item_to_menu( $menu ) {
+	if ( is_user_logged_in() ) {
+		return $menu;
+	}
+
+	global $wp;
+	$redirect_url = home_url( $wp->request );
+	$login_item = array(
+		'label' => __( 'Log in', 'make-wporg' ),
+		'url' => wp_login_url( $redirect_url ),
+	);
+
+	if ( $menu ) {
+		$login_item['className'] = 'has-separator';
+		$menu[] = $login_item;
+	} else {
+		$menu = array( $login_item );
+	}
+
+	return $menu;
+}
+
+/**
  * Provide a list of local navigation menus.
  */
 function add_site_navigation_menus( $menus ) {
-	$menu = array(
-		array(
-			'label' => __( 'Meetings', 'make-wporg' ),
-			'url'   => site_url( '/meetings/' ),
-		),
-		array(
-			'label' => __( 'Team Updates', 'make-wporg' ),
-			'url'   => site_url( '/updates/' ),
-		),
-		array(
-			'label' => __( 'Project Updates', 'make-wporg' ),
-			'url'   => site_url( '/project/' ),
-		),
-		array(
-			'label'     => __( 'Five for the Future', 'make-wporg' ),
-			'url'       => 'https://wordpress.org/five-for-the-future/',
-		),
-		array(
-			'label' => __( 'Contributor Handbook', 'make-wporg' ),
-			'url'   => site_url( '/handbook/' ),
-		),
-	);
-
-	if ( ! is_user_logged_in() ) {
-		global $wp;
-		$redirect_url = home_url( $wp->request );
-		$menu[] = array(
-			'label' => __( 'Log in', 'make-wporg' ),
-			'url' => wp_login_url( $redirect_url ),
-			'className' => 'has-separator',
+	if ( is_singular( 'handbook' ) || is_search() ) {
+		$menus['breathe'] = _maybe_add_login_item_to_menu( get_handbook_navigation_menu() );
+	} else {
+		$menus['make'] = _maybe_add_login_item_to_menu(
+			array(
+				array(
+					'label' => __( 'Meetings', 'make-wporg' ),
+					'url'   => site_url( '/meetings/' ),
+				),
+				array(
+					'label' => __( 'Team Updates', 'make-wporg' ),
+					'url'   => site_url( '/updates/' ),
+				),
+				array(
+					'label' => __( 'Project Updates', 'make-wporg' ),
+					'url'   => site_url( '/project/' ),
+				),
+				array(
+					'label' => __( 'Five for the Future', 'make-wporg' ),
+					'url'   => 'https://wordpress.org/five-for-the-future/',
+				),
+				array(
+					'label' => __( 'Contributor Handbook', 'make-wporg' ),
+					'url'   => site_url( '/handbook/' ),
+				),
+			)
 		);
 	}
-
-	$menus['make'] = $menu;
 
 	return $menus;
 }
@@ -114,24 +172,33 @@ function make_query_mods( $query ) {
 		$query->set( 'posts_per_page', 1 );
 	}
 
-	// There's nothing worth searching for on this site.
-	if ( ! is_admin() && $query->is_main_query() && $query->is_search() ) {
+	// There's nothing worth searching for on this site, unless it's a handbook search.
+	if ( ! is_admin() && $query->is_main_query() && $query->is_search() && function_exists( 'wporg_is_handbook' ) && ! wporg_is_handbook() ) {
 		$query->set_404();
 	}
 }
 
 /**
- * Ensure all non-post routes 404, as this site isn't like most others.
+ * Ensure all non-post and non-handbook routes 404, as this site isn't like most others.
  *
  * @param array    $posts The array of posts.
  * @param WP_Query $query The WP_Query instance (passed by reference).
  * @return array The filtered posts array.
  */
 function make_handle_non_post_routes( $posts, $query ) {
+	// Return early if admin, not main query, or handbook search
 	if (
-		( ! is_admin() && $query->is_main_query() && ! $query->is_robots() && ! $posts ) ||
-			// Pagination on the query is explicitly disabled, so this doesn't 404
-			( ! is_admin() && $query->is_main_query() && $query->is_post_type_archive( 'meeting' ) && $query->get( 'paged' ) > 1 )
+		is_admin() ||
+		! $query->is_main_query() ||
+		( $query->is_search() && function_exists( 'wporg_is_handbook' ) && wporg_is_handbook() )
+	) {
+		return $posts;
+	}
+
+	// Set 404 for empty results or paginated meeting archives
+	if (
+		( ! $query->is_robots() && ! $posts ) ||
+		( $query->is_post_type_archive( 'meeting' ) && $query->get( 'paged' ) > 1 )
 	) {
 		$query->set_404();
 		status_header( 404 );
@@ -200,4 +267,210 @@ function replace_make_site_permalink( $permalink, $post ) {
 	}
 
 	return $permalink;
+}
+
+/**
+ * Modify search block action URL for handbook pages
+ */
+function modify_handbook_search_block_action( $block_content, $block ) {
+	if ( is_singular( 'handbook' ) || is_search() ) {
+		$search_url = function_exists( 'wporg_is_handbook' ) && wporg_is_handbook()
+			? wporg_get_current_handbook_home_url()
+			: home_url( '/' );
+
+		$block_content = preg_replace(
+			'/<form[^>]*action="[^"]*"/',
+			'<form action="' . esc_url( $search_url ) . '"',
+			$block_content
+		);
+	}
+
+	return $block_content;
+}
+
+/**
+ * Only display the 'Last updated' if the modified date is later than the publishing date.
+ */
+add_shortcode(
+	'last_updated',
+	function() {
+		global $post;
+		if ( get_the_modified_date( 'Ymdhi', $post->ID ) > get_the_date( 'Ymdhi', $post->ID ) ) {
+			return '<p style="font-style:normal;font-weight:700">' . esc_html__( 'Last updated', 'make-wporg' ) . '</p>';
+		}
+		return '';
+	}
+);
+
+/**
+ * Switch out the destination for next/prev links to mirror the Chapter List order.
+ *
+ * @param string  $output   The adjacent post link.
+ * @param string  $format   Link anchor format.
+ * @param string  $link     Link permalink format.
+ * @param WP_Post $post     The adjacent post.
+ * @param string  $adjacent Whether the post is previous or next.
+ *
+ * @return string Updated link tag.
+ */
+function get_adjacent_handbook_post_link( $output, $format, $link, $post, $adjacent ) {
+	if ( function_exists( 'wporg_is_handbook' ) && ! wporg_is_handbook() ) {
+		return $output;
+	}
+
+	$post_id = get_the_ID();
+	$pages   = get_pages(
+		array(
+			'sort_column' => 'menu_order, title',
+			'post_type'   => get_post_type( $post_id ),
+		)
+	);
+	$is_previous = 'previous' === $adjacent;
+
+	foreach ( $pages as $i => $page ) {
+		if ( $page->ID === $post_id ) {
+			$adj_index = $is_previous ? $i - 1 : $i + 1;
+			break;
+		}
+	}
+
+	if ( $adj_index < count( $pages ) && $adj_index > 0 ) {
+		$post = $pages[ $adj_index ];
+	} else {
+		return '';
+	}
+
+	$title = apply_filters( 'the_title', $post->post_title, $post->ID );
+	$url   = get_permalink( $post );
+
+	$screen_reader_content = sprintf(
+		$is_previous
+			? /* translators: %s: post title */
+			__( 'Previous: %s', 'make-wporg' )
+			: /* translators: %s: post title */
+			__( 'Next: %s', 'make-wporg' ),
+		$title
+	);
+
+	$content = str_replace(
+		'%title',
+		sprintf(
+			'<span aria-hidden="true" class="post-navigation-link__label">%1$s</span>
+			<span aria-hidden="true" class="post-navigation-link__title">%2$s</span>
+			<span class="screen-reader-text">%3$s</span>',
+			$is_previous ? __( 'Previous', 'make-wporg' ) : __( 'Next', 'make-wporg' ),
+			$title,
+			$screen_reader_content,
+		),
+		$link
+	);
+
+	$inlink = sprintf(
+		'<a href="%1$s" rel="%2$s">%3$s</a>',
+		$url,
+		$is_previous ? 'prev' : 'next',
+		$content
+	);
+
+	$output = str_replace( '%link', $inlink, $format );
+
+	return $output;
+}
+
+/**
+ * Update header template based on current query.
+ *
+ * @param array $parsed_block The block being rendered.
+ *
+ * @return array The updated block.
+ */
+function modify_header_template_part( $parsed_block ) {
+	if (
+		'core/template-part' === $parsed_block['blockName'] &&
+		! empty( $parsed_block['attrs']['slug'] ) &&
+		str_starts_with( $parsed_block['attrs']['slug'], 'header' )
+	) {
+		if (
+			function_exists( 'wporg_is_handbook' ) &&
+			wporg_is_handbook() &&
+			! wporg_is_handbook_landing_page()
+		) {
+			$parsed_block['attrs']['slug'] = 'header-handbook-child';
+		}
+	}
+
+	return $parsed_block;
+}
+
+/**
+ * Filters breadcrumb items for the site-breadcrumb block.
+ * Breadcrumbs are only displayed on the handbook pages, so this logic is specific to that usage.
+ *
+ * @param array $breadcrumbs The current breadcrumbs.
+ *
+ * @return array The modified breadcrumbs.
+ */
+function set_site_breadcrumbs( $breadcrumbs ) {
+	if ( empty( $breadcrumbs ) ) {
+		return $breadcrumbs;
+	}
+
+	$handbook_home_url = wporg_get_current_handbook_home_url();
+
+	// Change the title of the first breadcrumb to 'Home'.
+	$breadcrumbs[0]['title'] = 'Home';
+
+	// Insert the handbook home page as the second breadcrumb.
+	$handbook_home_breadcrumb = array(
+		'url' => $handbook_home_url,
+		'title' => 'Handbook',
+	);
+	array_splice( $breadcrumbs, 1, 0, array( $handbook_home_breadcrumb ) );
+
+	if ( is_search() ) {
+		// Remove all the breadcrumbs after the handbook home breadcrumb.
+		$breadcrumbs = array_slice( $breadcrumbs, 0, 2 );
+		$current_page = get_query_var( 'paged' );
+		$is_paged = $current_page > 1;
+		$unpaged_search_url = $handbook_home_url . '?s=' . get_search_query();
+
+		// Add a search results breadcrumb.
+		$breadcrumbs[] = array(
+			'url' => $is_paged ? $unpaged_search_url : false,
+			'title' => 'Search results',
+		);
+
+		if ( $is_paged ) {
+			$breadcrumbs[] = array(
+				'url' => false,
+				'title' => sprintf( 'Page %s', $current_page ),
+			);
+		}
+	} else {
+		// Add the ancestors of the current page to the breadcrumbs.
+		$post_id = get_the_ID();
+		$ancestors = get_post_ancestors( $post_id );
+
+		if ( ! empty( $ancestors ) ) {
+			foreach ( $ancestors as $ancestor ) {
+				$ancestor_post = get_post( $ancestor );
+
+				$ancestor_breadcrumb = array(
+					'url' => get_permalink( $ancestor_post ),
+					'title' => get_the_title( $ancestor_post ),
+				);
+
+				// Insert the ancestor breadcrumb after the handbook home breadcrumb.
+				array_splice( $breadcrumbs, 2, 0, array( $ancestor_breadcrumb ) );
+			}
+		}
+	}
+
+	// Ensure breadcrumbs are displayed only when there are at least 3 levels.
+	$breadcrumb_level = count( $breadcrumbs );
+	if ( $breadcrumb_level < 3 ) {
+		$breadcrumbs = array();
+	}
+
+	return $breadcrumbs;
 }

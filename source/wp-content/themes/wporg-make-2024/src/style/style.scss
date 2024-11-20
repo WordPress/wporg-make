@@ -212,3 +212,61 @@
 		@extend %make-performance-icon;
 	}
 }
+
+/** Make Core local nav items with icons only **/
+.wp-block-wporg-local-navigation-bar {
+	.wp-block-navigation-item {
+		a::before {
+			/* stylelint-disable-next-line font-family-no-missing-generic-family-keyword */
+			font: 20px / var(--wp--custom--body--small--typography--line-height) dashicons;
+			display: inline-block;
+			-webkit-font-smoothing: antialiased;
+			vertical-align: middle;
+		}
+
+		a[href*="browser"] .wp-block-navigation-item__label,
+		a[href*="timeline"] .wp-block-navigation-item__label,
+		a[href*="newticket"] .wp-block-navigation-item__label {
+			clip: rect(1px, 1px, 1px, 1px);
+			word-wrap: normal !important;
+			border: 0;
+			clip-path: inset(50%);
+			height: 1px;
+			margin: -1px;
+			overflow: hidden;
+			padding: 0;
+			position: absolute;
+			width: 1px;
+		}
+	}
+
+	a[href*="browser"]::before {
+		content: "\f475";
+	}
+
+	a[href*="timeline"]::before {
+		content: "\f321";
+	}
+
+	a[href*="newticket"]::before {
+		content: "\f119";
+	}
+}
+
+.wporg-breadcrumbs {
+	margin-bottom: calc(var(--wp--preset--spacing--10) * -1);
+}
+
+dl.glossary-list dt {
+	font-weight: 600;
+}
+
+.entry-content code {
+	background: var(--wp--preset--color--light-grey-2);
+	border-radius: 2px;
+	display: inline-block;
+	line-height: var(--wp--custom--body--extra-small--typography--line-height);
+	max-width: 100%;
+	padding-inline-end: 3px;
+	padding-inline-start: 3px;
+}

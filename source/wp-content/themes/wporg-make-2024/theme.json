@@ -141,6 +141,17 @@
 					"lineHeight": "var(--wp--custom--heading--level-1--typography--line-height)",
 					"fontWeight": "400"
 				}
+			},
+			"core/comment-content": {
+				"spacing": {
+					"margin": {
+						"top": "var(--wp--preset--spacing--10)"
+					}
+				},
+				"css": "& p { margin: var(--wp--preset--spacing--10) 0; line-height: var(--wp--custom--body--small--typography--line-height); }"
+			},
+			"core/comment-template": {
+				"css": "& ol { border-left: unset !important; padding-left: 60px !important; } & li { margin-top: var(--wp--preset--spacing--10); }"
 			}
 		},
 		"elements": {
