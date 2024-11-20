@@ -418,12 +418,12 @@ function set_site_breadcrumbs( $breadcrumbs ) {
 	$handbook_home_url = wporg_get_current_handbook_home_url();
 
 	// Change the title of the first breadcrumb to 'Home'.
-	$breadcrumbs[0]['title'] = 'Home';
+	$breadcrumbs[0]['title'] = __( 'Home', 'make-wporg' );
 
 	// Insert the handbook home page as the second breadcrumb.
 	$handbook_home_breadcrumb = array(
 		'url' => $handbook_home_url,
-		'title' => 'Handbook',
+		'title' => __( 'Handbook', 'make-wporg' ),
 	);
 	array_splice( $breadcrumbs, 1, 0, array( $handbook_home_breadcrumb ) );
 
@@ -437,13 +437,14 @@ function set_site_breadcrumbs( $breadcrumbs ) {
 		// Add a search results breadcrumb.
 		$breadcrumbs[] = array(
 			'url' => $is_paged ? $unpaged_search_url : false,
-			'title' => 'Search results',
+			'title' => __( 'Search results', 'make-wporg' ),
 		);
 
 		if ( $is_paged ) {
 			$breadcrumbs[] = array(
 				'url' => false,
-				'title' => sprintf( 'Page %s', $current_page ),
+				/* translators: %s: Page number */
+				'title' => sprintf( __( 'Page %s', 'make-wporg' ), $current_page ),
 			);
 		}
 	} else {
