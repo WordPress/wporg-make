@@ -415,35 +415,54 @@ function set_site_breadcrumbs( $breadcrumbs ) {
 		return $breadcrumbs;
 	}
 
+	$handbook_home_url = wporg_get_current_handbook_home_url();
+
 	// Change the title of the first breadcrumb to 'Home'.
 	$breadcrumbs[0]['title'] = 'Home';
 
 	// Insert the handbook home page as the second breadcrumb.
-	// Create the handbook homepage breadcrumb.
 	$handbook_home_breadcrumb = array(
-		'url' => wporg_get_current_handbook_home_url(),
+		'url' => $handbook_home_url,
 		'title' => 'Handbook',
 	);
-
-	// Insert the handbook homepage breadcrumb as the second breadcrumb.
 	array_splice( $breadcrumbs, 1, 0, array( $handbook_home_breadcrumb ) );
 
-	$post_id = get_the_ID();
+	if ( is_search() ) {
+		// Remove all the breadcrumbs after the handbook home breadcrumb.
+		$breadcrumbs = array_slice( $breadcrumbs, 0, 2 );
+		$current_page = get_query_var( 'paged' );
+		$is_paged = $current_page > 1;
+		$unpaged_search_url = $handbook_home_url . '?s=' . get_search_query();
 
-	// Add the ancestors of the current page to the breadcrumbs.
-	$ancestors = get_post_ancestors( $post_id );
+		// Add a search results breadcrumb.
+		$breadcrumbs[] = array(
+			'url' => $is_paged ? $unpaged_search_url : false,
+			'title' => 'Search results',
+		);
 
-	if ( ! empty( $ancestors ) ) {
-		foreach ( $ancestors as $ancestor ) {
-			$ancestor_post = get_post( $ancestor );
-
-			$ancestor_breadcrumb = array(
-				'url' => get_permalink( $ancestor_post ),
-				'title' => get_the_title( $ancestor_post ),
+		if ( $is_paged ) {
+			$breadcrumbs[] = array(
+				'url' => false,
+				'title' => sprintf( 'Page %s', $current_page ),
 			);
+		}
+	} else {
+		// Add the ancestors of the current page to the breadcrumbs.
+		$post_id = get_the_ID();
+		$ancestors = get_post_ancestors( $post_id );
 
-			// Insert the ancestor breadcrumb after the handbook home breadcrumb.
-			array_splice( $breadcrumbs, 2, 0, array( $ancestor_breadcrumb ) );
+		if ( ! empty( $ancestors ) ) {
+			foreach ( $ancestors as $ancestor ) {
+				$ancestor_post = get_post( $ancestor );
+
+				$ancestor_breadcrumb = array(
+					'url' => get_permalink( $ancestor_post ),
+					'title' => get_the_title( $ancestor_post ),
+				);
+
+				// Insert the ancestor breadcrumb after the handbook home breadcrumb.
+				array_splice( $breadcrumbs, 2, 0, array( $ancestor_breadcrumb ) );
+			}
 		}
 	}
 
