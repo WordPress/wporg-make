@@ -253,6 +253,10 @@
 	}
 }
 
+.wporg-breadcrumbs {
+	margin-bottom: calc(var(--wp--preset--spacing--10) * -1);
+}
+
 dl.glossary-list dt {
 	font-weight: 600;
 }
