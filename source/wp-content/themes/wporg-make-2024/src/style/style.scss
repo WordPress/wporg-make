@@ -270,3 +270,7 @@ dl.glossary-list dt {
 	padding-inline-end: 3px;
 	padding-inline-start: 3px;
 }
+
+.has-three-columns article {
+	--wp--style--global--content-size: 960px;
+}
