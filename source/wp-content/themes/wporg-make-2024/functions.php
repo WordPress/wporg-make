@@ -91,9 +91,13 @@ function get_handbook_navigation_menu() {
 
 	return array_map(
 		function( $menu_item ) {
+			global $wp;
+			$is_current_page = trailingslashit( $menu_item->url ) === trailingslashit( home_url( $wp->request ) );
+
 			return array(
 				'label' => esc_html( $menu_item->title ),
 				'url' => esc_url( $menu_item->url ),
+				'className' => $is_current_page ? 'current-menu-item' : '',
 			);
 		},
 		// Limit local nav items to 6
@@ -138,6 +142,7 @@ function add_site_navigation_menus( $menus ) {
 				array(
 					'label' => __( 'Meetings', 'make-wporg' ),
 					'url'   => site_url( '/meetings/' ),
+					'className' => is_page( 'meetings' ) ? 'current-menu-item' : '',
 				),
 				array(
 					'label' => __( 'Team Updates', 'make-wporg' ),
