@@ -261,14 +261,22 @@ dl.glossary-list dt {
 	font-weight: 600;
 }
 
-.entry-content code {
-	background: var(--wp--preset--color--light-grey-2);
-	border-radius: 2px;
-	display: inline-block;
-	line-height: var(--wp--custom--body--extra-small--typography--line-height);
-	max-width: 100%;
-	padding-inline-end: 3px;
-	padding-inline-start: 3px;
+.entry-content {
+	code {
+		background: var(--wp--preset--color--light-grey-2);
+		border-radius: 2px;
+		display: inline-block;
+		line-height: var(--wp--custom--body--extra-small--typography--line-height);
+		max-width: 100%;
+		padding-inline-end: 3px;
+		padding-inline-start: 3px;
+		white-space: break-spaces;
+	}
+
+	pre code {
+		padding: var(--wp--preset--spacing--20);
+		width: 100%;
+	}
 }
 
 .has-three-columns article {
