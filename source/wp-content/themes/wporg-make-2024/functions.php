@@ -21,11 +21,14 @@ add_filter( 'post_type_link', __NAMESPACE__ . '\replace_make_site_permalink', 10
 add_filter( 'previous_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link', 10, 5 );
 add_filter( 'render_block_core/search', __NAMESPACE__ . '\modify_handbook_search_block_action', 10, 2 );
 add_filter( 'render_block_data', __NAMESPACE__ . '\modify_header_template_part' );
+add_filter( 'single_template_hierarchy', __NAMESPACE__ . '\add_handbook_templates' );
 add_filter( 'the_posts', __NAMESPACE__ . '\make_handle_non_post_routes', 10, 2 );
 add_filter( 'wporg_block_navigation_menus', __NAMESPACE__ . '\add_site_navigation_menus' );
 add_filter( 'wporg_block_site_breadcrumbs', __NAMESPACE__ . '\set_site_breadcrumbs' );
 add_filter( 'wporg_handbook_toc_should_add_toc', '__return_false' );
 add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\make_noindex' );
+
+remove_filter( 'the_title', array( 'WPOrg_Cli\Handbook', 'filter_the_title_edit_link' ), 10, 2 );
 
 /**
  * Enqueue theme styles.
@@ -479,4 +482,79 @@ function set_site_breadcrumbs( $breadcrumbs ) {
 	}
 
 	return $breadcrumbs;
+}
+
+/**
+ * Filter the template heiarchy to add a github handbook template.
+ *
+ * @param string[] $templates A list of template candidates, in descending order of priority.
+ * @return string[] Updated list of templates.
+ */
+function add_handbook_templates( $templates ) {
+	$is_github_source = ! empty( get_post_meta( get_the_ID(), 'wporg_cli_markdown_source', true ) );
+
+	if ( $is_github_source ) {
+		array_unshift( $templates, 'single-handbook-github.php' );
+	}
+
+	return $templates;
+}
+
+
+/**
+ * Get the link to edit the page.
+ */
+add_shortcode(
+	'article_edit_link',
+	function() {
+		global $post;
+		$markdown_source = get_markdown_edit_link( $post->ID );
+		if ( $markdown_source ) {
+			return esc_url( $markdown_source );
+		}
+		return is_user_logged_in() ? get_edit_post_link() : wp_login_url( get_permalink() );
+	}
+);
+
+/**
+ * Get the link to the GH commit history.
+ */
+add_shortcode(
+	'article_changelog_link',
+	function() {
+		global $post;
+		$markdown_source = get_markdown_edit_link( $post->ID );
+		// If this is a github page, use the edit URL to generate the
+		// commit history URL
+		if ( str_contains( $markdown_source, 'github.com' ) ) {
+			return str_replace( '/edit/', '/commits/', $markdown_source );
+		}
+		return '#';
+	}
+);
+
+/**
+ * Get the markdown link.
+ *
+ * @param int $post_id Post ID.
+ */
+function get_markdown_edit_link( $post_id ) {
+	$markdown_source = get_post_meta( $post_id, 'wporg_cli_markdown_source', true );
+	if ( ! $markdown_source ) {
+		return;
+	}
+
+	if ( 'github.com' !== parse_url( $markdown_source, PHP_URL_HOST ) ) {
+		return $markdown_source;
+	}
+
+	if ( preg_match( '!^https?://github.com/(?P<repo>[^/]+/[^/]+)/(?P<editblob>blob|edit)/(?P<branchfile>.*)$!i', $markdown_source, $m ) ) {
+		if ( 'edit' === $m['editblob'] ) {
+			return $markdown_source;
+		}
+
+		$markdown_source = "https://github.com/{$m['repo']}/edit/{$m['branchfile']}";
+	}
+
+	return $markdown_source;
 }
