@@ -163,6 +163,10 @@ function add_site_navigation_menus( $menus ) {
 					'label' => __( 'Contributor Handbook', 'make-wporg' ),
 					'url'   => site_url( '/handbook/' ),
 				),
+				array(
+					'label' => __( 'Slack', 'make-wporg' ),
+					'url'   => 'https://make.wordpress.org/chat/',
+				),
 			)
 		);
 	}
