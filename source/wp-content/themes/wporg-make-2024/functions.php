@@ -164,7 +164,7 @@ function add_site_navigation_menus( $menus ) {
 					'url'   => site_url( '/handbook/' ),
 				),
 				array(
-					'label' => __( 'Chat', 'make-wporg' ),
+					'label' => __( 'Communicate', 'make-wporg' ),
 					'url'   => 'https://make.wordpress.org/chat/',
 				),
 			)
