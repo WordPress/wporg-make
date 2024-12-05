@@ -1,0 +1,25 @@
+.page .entry-content {
+	#openverse,
+	#performance {
+		> .wp-block-group > p::before {
+			content: "";
+			width: 24px;
+			height: 24px;
+			mask-repeat: no-repeat;
+			mask-position: bottom;
+			mask-size: 24px;
+			display: block;
+			background-color: currentColor;
+		}
+	}
+
+	#openverse > .wp-block-group > p::before {
+
+		@extend %make-openverse-icon;
+	}
+
+	#performance > .wp-block-group > p::before {
+
+		@extend %make-performance-icon;
+	}
+}

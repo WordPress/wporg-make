@@ -1,0 +1,150 @@
+.wporg-make-front-page-intro {
+
+	@media (max-width: 899px) {
+		flex-direction: column;
+	}
+}
+
+.wporg-make-team-list {
+	.make_site {
+		&:last-child [style*="border-bottom"] {
+			border-bottom: none !important;
+		}
+
+		.wp-block-post-title {
+			display: flex;
+			align-items: flex-start;
+			gap: 5px;
+			line-height: 24px;
+
+			a {
+				line-height: inherit;
+			}
+
+			&::before {
+				display: block;
+				/* stylelint-disable-next-line font-family-no-missing-generic-family-keyword */
+				font-family: dashicons;
+				content: "\f109";
+				font-weight: 400;
+				font-size: 20px;
+				line-height: inherit;
+				width: 24px;
+				text-align: center;
+				-webkit-font-smoothing: antialiased;
+				-moz-osx-font-smoothing: grayscale;
+				color: var(--wp--preset--color--blueberry-1);
+			}
+		}
+
+		&.make-core .wp-block-post-title::before {
+			content: "\f475";
+		}
+
+		&.make-mobile .wp-block-post-title::before {
+			content: "\f470";
+		}
+
+		&.make-design .wp-block-post-title::before {
+			content: "\f309";
+		}
+
+		&.make-accessibility .wp-block-post-title::before {
+			content: "\f483";
+		}
+
+		&.make-polyglots .wp-block-post-title::before {
+			content: "\f326";
+		}
+
+		&.make-support .wp-block-post-title::before {
+			content: "\f125";
+		}
+
+		&.make-themes .wp-block-post-title::before {
+			content: "\f100";
+		}
+
+		&.make-plugins .wp-block-post-title::before {
+			content: "\f106";
+		}
+
+		&.make-docs .wp-block-post-title::before {
+			content: "\f105";
+		}
+
+		&.make-community .wp-block-post-title::before {
+			content: "\f307";
+		}
+
+		&.make-meta .wp-block-post-title::before {
+			content: "\f325";
+		}
+
+		&.make-training .wp-block-post-title::before {
+			content: "\f118";
+		}
+
+		&.make-flow .wp-block-post-title::before {
+			content: "\f115";
+		}
+
+		&.make-tv .wp-block-post-title::before {
+			content: "\f235";
+		}
+
+		&.make-marketing .wp-block-post-title::before {
+			content: "\f130";
+		}
+
+		&.make-media-corps .wp-block-post-title::before {
+			content: "\f130";
+		}
+
+		&.make-cli .wp-block-post-title::before {
+			content: "\f345";
+		}
+
+		&.make-hosting .wp-block-post-title::before {
+			content: "\f176";
+		}
+
+		&.make-tide .wp-block-post-title::before {
+			content: "\f10d";
+		}
+
+		&.make-photos .wp-block-post-title::before {
+			content: "\f306";
+		}
+
+		&.make-sustainability .wp-block-post-title::before {
+			content: "\f11f";
+		}
+
+		&.make-openverse .wp-block-post-title,
+		&.make-performance .wp-block-post-title {
+			&::before {
+				font-family: inherit;
+				content: ".";
+				text-indent: -999px;
+				width: 24px;
+				height: 24px;
+				mask-repeat: no-repeat;
+				mask-position: center;
+				mask-size: 28px;
+				display: inline-block;
+				background-color: currentColor;
+			}
+		}
+
+		&.make-openverse .wp-block-post-title::before {
+
+			@extend %make-openverse-icon;
+		}
+
+		&.make-performance .wp-block-post-title::before {
+
+			@extend %make-performance-icon;
+		}
+	}
+}
