@@ -37,3 +37,113 @@
 		content: "\f119";
 	}
 }
+
+/* Local nav site title team icon on handbook pages */
+.wporg-make .wp-block-site-title a::before {
+	display: inline-block;
+	/* stylelint-disable-next-line font-family-no-missing-generic-family-keyword */
+	font: 400 20px / var(--wp--custom--body--small--typography--line-height) dashicons;
+	vertical-align: middle;
+	margin-inline-end: 9px;
+}
+
+.make-core .wp-block-site-title a::before {
+	content: "\f475";
+}
+
+.make-design .wp-block-site-title a::before {
+	content: "\f309";
+}
+
+.make-mobile .wp-block-site-title a::before {
+	content: "\f470";
+}
+
+.make-accessibility .wp-block-site-title a::before {
+	content: "\f483";
+}
+
+.make-polyglots .wp-block-site-title a::before {
+	content: "\f326";
+}
+
+.make-support .wp-block-site-title a::before {
+	content: "\f125";
+}
+
+.make-themes .wp-block-site-title a::before {
+	content: "\f100";
+}
+
+.make-plugins .wp-block-site-title a::before {
+	content: "\f106";
+}
+
+.make-docs .wp-block-site-title a::before {
+	content: "\f105";
+}
+
+.make-community .wp-block-site-title a::before {
+	content: "\f307";
+}
+
+.make-meta .wp-block-site-title a::before {
+	content: "\f325";
+}
+
+.make-training .wp-block-site-title a::before {
+	content: "\f118";
+}
+
+.make-systems .wp-block-site-title a::before {
+	content: "\f107";
+}
+
+.make-flow .wp-block-site-title a::before {
+	content: "\f115";
+}
+
+.make-tv .wp-block-site-title a::before {
+	content: "\f235";
+}
+
+.make-marketing .wp-block-site-title a::before {
+	content: "\f130";
+}
+
+.make-cli .wp-block-site-title a::before {
+	content: "\f345";
+}
+
+.make-hosting .wp-block-site-title a::before {
+	content: "\f176";
+}
+
+/* Adjustments for teams with SVG icons. */
+.wporg-make {
+	&.make-openverse .wp-block-site-title,
+	&.make-performance .wp-block-site-title {
+		a::before {
+			font-family: inherit;
+			content: ".";
+			text-indent: -999px;
+			width: 24px;
+			height: 24px;
+			mask-repeat: no-repeat;
+			mask-size: 24px;
+			background-color: currentColor;
+			vertical-align: middle;
+			margin-top: -3px;
+		}
+	}
+
+	&.make-openverse .wp-block-site-title a::before {
+
+		@extend %make-openverse-icon;
+	}
+
+	&.make-performance .wp-block-site-title a::before {
+
+		@extend %make-performance-icon;
+	}
+}
