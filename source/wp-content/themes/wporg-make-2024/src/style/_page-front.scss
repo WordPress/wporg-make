@@ -122,19 +122,26 @@
 		}
 
 		&.make-openverse .wp-block-post-title,
-		&.make-performance .wp-block-post-title {
+		&.make-performance .wp-block-post-title,
+		&.make-playground .wp-block-post-title {
 			&::before {
 				font-family: inherit;
 				content: ".";
 				text-indent: -999px;
 				width: 24px;
-				height: 24px;
+				height: 20px;
 				mask-repeat: no-repeat;
 				mask-position: center;
-				mask-size: 28px;
+				mask-size: 20px;
 				display: inline-block;
 				background-color: currentColor;
 			}
+		}
+
+		&.make-openverse .wp-block-post-title::before,
+		&.make-performance .wp-block-post-title::before {
+			height: 24px;
+			mask-size: 28px;
 		}
 
 		&.make-openverse .wp-block-post-title::before {
@@ -145,6 +152,11 @@
 		&.make-performance .wp-block-post-title::before {
 
 			@extend %make-performance-icon;
+		}
+
+		&.make-playground .wp-block-post-title::before {
+
+			@extend %make-playground-icon;
 		}
 	}
 }
