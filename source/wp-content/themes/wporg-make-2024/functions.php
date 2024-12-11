@@ -27,8 +27,30 @@ add_filter( 'wporg_block_navigation_menus', __NAMESPACE__ . '\add_site_navigatio
 add_filter( 'wporg_block_site_breadcrumbs', __NAMESPACE__ . '\set_site_breadcrumbs' );
 add_filter( 'wporg_handbook_toc_should_add_toc', '__return_false' );
 add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\make_noindex' );
+add_action( 'wp_loaded', __NAMESPACE__ . '\remove_github_edit_link_from_title' );
 
 remove_filter( 'the_title', array( 'WPOrg_Cli\Handbook', 'filter_the_title_edit_link' ), 10, 2 );
+
+/**
+ * Remove the WordPressdotorg\Markdown filter that adds the GitHub edit link to the title.
+ */
+function remove_github_edit_link_from_title() {
+	global $wp_filter;
+	$filters = isset( $wp_filter['the_title'] ) ? $wp_filter['the_title'] : array();
+
+	foreach ( $filters as $priority => $callbacks ) {
+		foreach ( $callbacks as $callback ) {
+			if (
+				is_array( $callback )
+				&& is_array( $callback['function'] )
+				&& $callback['function'][0] instanceof \WordPressdotorg\Markdown\Editor
+				&& str_ends_with( $callback['function'][1], 'filter_the_title_edit_link' )
+			) {
+				remove_filter( 'the_title', $callback['function'], $priority );
+			}
+		}
+	}
+}
 
 /**
  * Enqueue theme styles.
@@ -495,7 +517,7 @@ function set_site_breadcrumbs( $breadcrumbs ) {
  * @return string[] Updated list of templates.
  */
 function add_handbook_templates( $templates ) {
-	$is_github_source = ! empty( get_post_meta( get_the_ID(), 'wporg_cli_markdown_source', true ) );
+	$is_github_source = ! empty( get_post_meta( get_the_ID(), 'wporg_cli_markdown_source', true ) ) || ! empty( get_post_meta( get_the_ID(), 'wporg_markdown_source', true ) );
 
 	if ( $is_github_source ) {
 		array_unshift( $templates, 'single-handbook-github.php' );
