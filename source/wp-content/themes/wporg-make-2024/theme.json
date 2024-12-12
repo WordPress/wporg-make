@@ -134,6 +134,9 @@
 	},
 	"styles": {
 		"blocks": {
+			"core/group": {
+				"css": "&.has-background { padding: var(--wp--preset--spacing--20); }"
+			},
 			"core/post-title": {
 				"typography": {
 					"fontFamily": "var(--wp--preset--font-family--eb-garamond)",
