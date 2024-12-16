@@ -174,7 +174,7 @@ function _maybe_add_login_item_to_menu( $menu ) {
  * Provide a list of local navigation menus.
  */
 function add_site_navigation_menus( $menus ) {
-	if ( is_singular( 'handbook' ) || is_search() ) {
+	if ( function_exists( 'wporg_is_handbook' ) && wporg_is_handbook() ) {
 		$menus['breathe'] = _maybe_add_login_item_to_menu( get_handbook_navigation_menu() );
 	} else {
 		$menus['make'] = _maybe_add_login_item_to_menu(
@@ -322,14 +322,10 @@ function replace_make_site_permalink( $permalink, $post ) {
  * Modify search block action URL for handbook pages
  */
 function modify_handbook_search_block_action( $block_content, $block ) {
-	if ( is_singular( 'handbook' ) || is_search() ) {
-		$search_url = function_exists( 'wporg_is_handbook' ) && wporg_is_handbook()
-			? wporg_get_current_handbook_home_url()
-			: home_url( '/' );
-
+	if ( function_exists( 'wporg_is_handbook' ) && wporg_is_handbook() ) {
 		$block_content = preg_replace(
 			'/<form[^>]*action="[^"]*"/',
-			'<form action="' . esc_url( $search_url ) . '"',
+			'<form action="' . esc_url( wporg_get_current_handbook_home_url() ) . '"',
 			$block_content
 		);
 	}
