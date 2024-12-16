@@ -22,6 +22,7 @@ add_filter( 'previous_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_l
 add_filter( 'render_block_core/search', __NAMESPACE__ . '\modify_handbook_search_block_action', 10, 2 );
 add_filter( 'render_block_data', __NAMESPACE__ . '\modify_header_template_part' );
 add_filter( 'single_template_hierarchy', __NAMESPACE__ . '\add_handbook_templates' );
+add_filter( 'the_content', __NAMESPACE__ . '\style_tables' );
 add_filter( 'the_posts', __NAMESPACE__ . '\make_handle_non_post_routes', 10, 2 );
 add_filter( 'wporg_block_navigation_menus', __NAMESPACE__ . '\add_site_navigation_menus' );
 add_filter( 'wporg_block_site_breadcrumbs', __NAMESPACE__ . '\set_site_breadcrumbs' );
@@ -225,6 +226,33 @@ function make_query_mods( $query ) {
 	if ( ! is_admin() && $query->is_main_query() && $query->is_search() && function_exists( 'wporg_is_handbook' ) && ! wporg_is_handbook() ) {
 		$query->set_404();
 	}
+}
+
+/**
+ * Filters content for the github handbooks to wrap tables with block markup for styles.
+ *
+ * @param string $content
+ * @return string
+ */
+function style_tables( $content ) {
+	if ( function_exists( 'wporg_is_handbook' ) && ! wporg_is_handbook() ) {
+		return $content;
+	}
+
+	// Find table elements in the content and wrap with figure.wp-block-table
+	$content = preg_replace_callback(
+		'!<table.*?</table>!is',
+		function( $matches ) {
+			return do_blocks(
+				'<!-- wp:table {"className":"is-style-borderless"} --><figure class="wp-block-table is-style-borderless">' .
+				$matches[0] .
+				'</figure><!-- /wp:table -->'
+			);
+		},
+		$content
+	);
+
+	return $content;
 }
 
 /**
