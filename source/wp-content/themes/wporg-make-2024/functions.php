@@ -541,6 +541,10 @@ function set_site_breadcrumbs( $breadcrumbs ) {
  * @return string[] Updated list of templates.
  */
 function add_handbook_templates( $templates ) {
+	if ( function_exists( 'wporg_is_handbook' ) && wporg_is_handbook() ) {
+		array_unshift( $templates, 'single-handbook.php' );
+	}
+
 	$is_github_source = ! empty( get_post_meta( get_the_ID(), 'wporg_cli_markdown_source', true ) ) || ! empty( get_post_meta( get_the_ID(), 'wporg_markdown_source', true ) );
 
 	if ( $is_github_source ) {
