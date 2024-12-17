@@ -57,24 +57,9 @@ function remove_github_edit_link_from_title() {
  * Enqueue theme styles.
  */
 function make_enqueue_scripts() {
-	// On Rosetta sites when switching to this theme for a block handbook layout, the parent theme styles
-	// may not be enqueued. We need to explicitly enqueue them before enqueuing the child theme styles.
-	if ( ! wp_style_is( 'wporg-parent-2021-style', 'enqueued' ) ) {
-		wp_enqueue_style(
-			'wporg-parent-2021-style',
-			get_theme_root_uri() . '/wporg-parent-2021/build/style.css',
-			[ 'wporg-global-fonts' ],
-			filemtime( get_theme_root() . '/wporg-parent-2021/build/style.css' )
-		);
-
-		wp_enqueue_style(
-			'wporg-parent-2021-block-styles',
-			get_theme_root_uri() . '/wporg-parent-2021/build/block-styles.css',
-			[ 'wporg-global-fonts' ],
-			filemtime( get_theme_root() . '/wporg-parent-2021/build/block-styles.css' )
-		);
-	}
-
+	// The parent style is registered as `wporg-parent-2021-style`, and will be loaded unless
+	// explicitly unregistered. We can load any child-theme overrides by declaring the parent
+	// stylesheet as a dependency.
 	$style_path = get_stylesheet_directory() . '/build/style/style-index.css';
 	$style_uri = get_stylesheet_directory_uri() . '/build/style/style-index.css';
 	wp_enqueue_style(
