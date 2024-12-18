@@ -6,6 +6,12 @@
 			"color": {
 				"border": "var(--wp--preset--color--light-grey-1)"
 			},
+			"form": {
+				"border": {
+					"color": "var(--wp--preset--color--charcoal-5)",
+					"width": "1px"
+				}
+			},
 			"heading": {
 				"typography": {
 					"fontFamily": "var(--wp--preset--font-family--inter)",
