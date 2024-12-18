@@ -79,7 +79,7 @@ function make_enqueue_scripts() {
 	// Preload the heading font(s).
 	if ( is_callable( 'global_fonts_preload' ) ) {
 		/* translators: Subsets can be any of cyrillic, cyrillic-ext, greek, greek-ext, vietnamese, latin, latin-ext. */
-		$subsets = _x( 'Latin', 'Heading font subsets, comma separated', 'make-wporg' );
+		$subsets = _x( 'Latin', 'Heading font subsets, comma separated', 'wporg' );
 		// All headings.
 		global_fonts_preload( 'EB Garamond, Inter', $subsets );
 	}
@@ -89,7 +89,7 @@ function make_enqueue_scripts() {
  * Sets up theme defaults and registers support for various WordPress features.
  */
 function make_setup_theme() {
-	register_nav_menu( 'primary', __( 'Navigation Menu', 'make-wporg' ) );
+	register_nav_menu( 'primary', __( 'Navigation Menu', 'wporg' ) );
 	add_theme_support( 'post-thumbnails' );
 	add_theme_support( 'title-tag' );
 }
@@ -142,7 +142,7 @@ function _maybe_add_login_item_to_menu( $menu ) {
 	global $wp;
 	$redirect_url = home_url( $wp->request );
 	$login_item = array(
-		'label' => __( 'Log in', 'make-wporg' ),
+		'label' => __( 'Log in', 'wporg' ),
 		'url' => wp_login_url( $redirect_url ),
 	);
 
@@ -166,28 +166,28 @@ function add_site_navigation_menus( $menus ) {
 		$menus['make'] = _maybe_add_login_item_to_menu(
 			array(
 				array(
-					'label' => __( 'Meetings', 'make-wporg' ),
+					'label' => __( 'Meetings', 'wporg' ),
 					'url'   => site_url( '/meetings/' ),
 					'className' => is_page( 'meetings' ) ? 'current-menu-item' : '',
 				),
 				array(
-					'label' => __( 'Team Updates', 'make-wporg' ),
+					'label' => __( 'Team Updates', 'wporg' ),
 					'url'   => site_url( '/updates/' ),
 				),
 				array(
-					'label' => __( 'Project Updates', 'make-wporg' ),
+					'label' => __( 'Project Updates', 'wporg' ),
 					'url'   => site_url( '/project/' ),
 				),
 				array(
-					'label' => __( 'Five for the Future', 'make-wporg' ),
+					'label' => __( 'Five for the Future', 'wporg' ),
 					'url'   => 'https://wordpress.org/five-for-the-future/',
 				),
 				array(
-					'label' => __( 'Contributor Handbook', 'make-wporg' ),
+					'label' => __( 'Contributor Handbook', 'wporg' ),
 					'url'   => site_url( '/handbook/' ),
 				),
 				array(
-					'label' => __( 'Communicate', 'make-wporg' ),
+					'label' => __( 'Communicate', 'wporg' ),
 					'url'   => 'https://make.wordpress.org/chat/',
 				),
 			)
@@ -354,7 +354,7 @@ add_shortcode(
 	function() {
 		global $post;
 		if ( get_the_modified_date( 'Ymdhi', $post->ID ) > get_the_date( 'Ymdhi', $post->ID ) ) {
-			return '<p style="font-style:normal;font-weight:700">' . esc_html__( 'Last updated', 'make-wporg' ) . '</p>';
+			return '<p style="font-style:normal;font-weight:700">' . esc_html__( 'Last updated', 'wporg' ) . '</p>';
 		}
 		return '';
 	}
@@ -404,9 +404,9 @@ function get_adjacent_handbook_post_link( $output, $format, $link, $post, $adjac
 	$screen_reader_content = sprintf(
 		$is_previous
 			? /* translators: %s: post title */
-			__( 'Previous: %s', 'make-wporg' )
+			__( 'Previous: %s', 'wporg' )
 			: /* translators: %s: post title */
-			__( 'Next: %s', 'make-wporg' ),
+			__( 'Next: %s', 'wporg' ),
 		$title
 	);
 
@@ -416,7 +416,7 @@ function get_adjacent_handbook_post_link( $output, $format, $link, $post, $adjac
 			'<span aria-hidden="true" class="post-navigation-link__label">%1$s</span>
 			<span aria-hidden="true" class="post-navigation-link__title">%2$s</span>
 			<span class="screen-reader-text">%3$s</span>',
-			$is_previous ? __( 'Previous', 'make-wporg' ) : __( 'Next', 'make-wporg' ),
+			$is_previous ? __( 'Previous', 'wporg' ) : __( 'Next', 'wporg' ),
 			$title,
 			$screen_reader_content,
 		),
@@ -476,12 +476,12 @@ function set_site_breadcrumbs( $breadcrumbs ) {
 	$handbook_home_url = wporg_get_current_handbook_home_url();
 
 	// Change the title of the first breadcrumb to 'Home'.
-	$breadcrumbs[0]['title'] = __( 'Home', 'make-wporg' );
+	$breadcrumbs[0]['title'] = __( 'Home', 'wporg' );
 
 	// Insert the handbook home page as the second breadcrumb.
 	$handbook_home_breadcrumb = array(
 		'url' => $handbook_home_url,
-		'title' => __( 'Handbook', 'make-wporg' ),
+		'title' => __( 'Handbook', 'wporg' ),
 	);
 	array_splice( $breadcrumbs, 1, 0, array( $handbook_home_breadcrumb ) );
 
@@ -495,14 +495,14 @@ function set_site_breadcrumbs( $breadcrumbs ) {
 		// Add a search results breadcrumb.
 		$breadcrumbs[] = array(
 			'url' => $is_paged ? $unpaged_search_url : false,
-			'title' => __( 'Search results', 'make-wporg' ),
+			'title' => __( 'Search results', 'wporg' ),
 		);
 
 		if ( $is_paged ) {
 			$breadcrumbs[] = array(
 				'url' => false,
 				/* translators: %s: Page number */
-				'title' => sprintf( __( 'Page %s', 'make-wporg' ), $current_page ),
+				'title' => sprintf( __( 'Page %s', 'wporg' ), $current_page ),
 			);
 		}
 	} else {

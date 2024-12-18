@@ -13,7 +13,7 @@
 	<!-- wp:group {"style":{"spacing":{"blockGap":"0"}},"layout":{"type":"constrained"}} -->
 	<div class="wp-block-group">
 		<!-- wp:paragraph {"style":{"typography":{"fontStyle":"normal","fontWeight":"700"}}} -->
-		<p style="font-style:normal;font-weight:700"><?php esc_html_e( 'First published', 'make-wporg' ); ?></p>
+		<p style="font-style:normal;font-weight:700"><?php esc_html_e( 'First published', 'wporg' ); ?></p>
 		<!-- /wp:paragraph -->
 
 		<!-- wp:post-date /-->

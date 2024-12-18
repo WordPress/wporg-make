@@ -17,10 +17,10 @@
 		"lint:css": "yarn workspaces run lint:css",
 		"lint:js": "yarn workspaces run lint:js",
 		"lint:php": "composer lint ./source/wp-content/themes/wporg-make-2024",
-		"setup:tools": "yarn && composer install && TEXTDOMAIN=make-wporg composer exec update-configs",
+		"setup:tools": "yarn && composer install && TEXTDOMAIN=wporg composer exec update-configs",
 		"setup:wp": "wp-env run cli bash env/setup.sh",
 		"start:theme": "yarn workspace wporg-make-2024 start",
-		"update:tools": "composer update && TEXTDOMAIN=make-wporg composer exec update-configs",
+		"update:tools": "composer update && TEXTDOMAIN=wporg composer exec update-configs",
 		"wp-env": "wp-env"
 	},
 	"workspaces": [

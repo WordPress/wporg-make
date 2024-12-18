@@ -32,7 +32,7 @@
 			}
 		}
 	},
-	"textdomain": "make-wporg",
+	"textdomain": "wporg",
 	"editorScript": "file:./index.js",
 	"viewStyle": "file:./style-index.css"
 }

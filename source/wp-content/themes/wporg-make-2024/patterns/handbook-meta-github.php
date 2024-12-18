@@ -13,7 +13,7 @@
 	<!-- wp:group {"style":{"spacing":{"blockGap":"0"}},"layout":{"type":"constrained"}} -->
 	<div class="wp-block-group">
 		<!-- wp:paragraph {"style":{"typography":{"fontStyle":"normal","fontWeight":"700"}}} -->
-		<p style="font-style:normal;font-weight:700"><?php esc_html_e( 'First published', 'make-wporg' ); ?></p>
+		<p style="font-style:normal;font-weight:700"><?php esc_html_e( 'First published', 'wporg' ); ?></p>
 		<!-- /wp:paragraph -->
 
 		<!-- wp:post-date /-->
@@ -34,7 +34,7 @@
 	<div class="wp-block-group">
 
 		<!-- wp:paragraph {"style":{"typography":{"fontStyle":"normal","fontWeight":"700"}}} -->
-		<p style="font-style:normal;font-weight:700"><?php esc_html_e( 'Edit article', 'make-wporg' ); ?></p>
+		<p style="font-style:normal;font-weight:700"><?php esc_html_e( 'Edit article', 'wporg' ); ?></p>
 		<!-- /wp:paragraph -->
 
 		<!-- wp:paragraph {"className":"external-link"} -->
@@ -42,7 +42,7 @@
 			<?php echo wp_kses_post(
 				sprintf(
 					/* translators: %s: article title */
-					__( 'Improve it on GitHub<span class="screen-reader-text">: %s</span>', 'make-wporg' ),
+					__( 'Improve it on GitHub<span class="screen-reader-text">: %s</span>', 'wporg' ),
 					'[article_title]'
 				)
 			); ?>
@@ -56,7 +56,7 @@
 	<div class="wp-block-group">
 
 		<!-- wp:paragraph {"style":{"typography":{"fontStyle":"normal","fontWeight":"700"}}} -->
-		<p style="font-style:normal;font-weight:700"><?php esc_html_e( 'Changelog', 'make-wporg' ); ?></p>
+		<p style="font-style:normal;font-weight:700"><?php esc_html_e( 'Changelog', 'wporg' ); ?></p>
 		<!-- /wp:paragraph -->
 
 		<!-- wp:paragraph {"className":"external-link"} -->
@@ -64,7 +64,7 @@
 			<?php echo wp_kses_post(
 				sprintf(
 					/* translators: %s: article title */
-					__( 'See list of changes<span class="screen-reader-text">: %s</span>', 'make-wporg' ),
+					__( 'See list of changes<span class="screen-reader-text">: %s</span>', 'wporg' ),
 					'[article_title]'
 				)
 			); ?>

@@ -15,7 +15,7 @@
 <!-- /wp:group -->
 
 <!-- wp:heading {"level":1} -->
-<h1><?php esc_html_e( 'This page doesn&#146;t exist.', 'make-wporg' ); ?></h1>
+<h1><?php esc_html_e( 'This page doesn&#146;t exist.', 'wporg' ); ?></h1>
 <!-- /wp:heading -->
 
 <!-- wp:paragraph -->
@@ -23,7 +23,7 @@
 	<?php
 	printf(
 		/* translators: %s is the site URL. */
-		wp_kses_post( __( 'Go to <a href="%s">the homepage</a>.', 'make-wporg' ) ),
+		wp_kses_post( __( 'Go to <a href="%s">the homepage</a>.', 'wporg' ) ),
 		esc_url( get_site_url( null, '/' ) )
 	);
 	?>

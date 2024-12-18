@@ -24,7 +24,7 @@
 	<div class="wp-block-group alignwide" style="padding-top:var(--wp--preset--spacing--40);padding-bottom:var(--wp--preset--spacing--30)">
 		
 		<!-- wp:heading {"level":1,"style":{"typography":{"fontSize":"50px"}}} -->
-		<h1 class="wp-block-heading" style="font-size:50px"><?php esc_html_e( 'Make WordPress', 'make-wporg' ); ?></h1>
+		<h1 class="wp-block-heading" style="font-size:50px"><?php esc_html_e( 'Make WordPress', 'wporg' ); ?></h1>
 		<!-- /wp:heading -->
 
 	</div>
@@ -37,11 +37,11 @@
 		<div class="wp-block-group" style="min-height:100%;padding-top:0;padding-right:var(--wp--preset--spacing--edge-space);padding-bottom:var(--wp--preset--spacing--30)">
 
 			<!-- wp:paragraph {"style":{"typography":{"lineHeight":"1.7"}},"fontSize":"large"} -->
-			<p class="has-large-font-size" style="line-height:1.7"><?php esc_html_e( 'Whether you’re a developer, a designer, or want to push the community forward, we’re always looking for people to join us in making WordPress even better.', 'make-wporg' ); ?></p>
+			<p class="has-large-font-size" style="line-height:1.7"><?php esc_html_e( 'Whether you’re a developer, a designer, or want to push the community forward, we’re always looking for people to join us in making WordPress even better.', 'wporg' ); ?></p>
 			<!-- /wp:paragraph -->
 
 			<!-- wp:paragraph -->
-			<p><?php esc_html_e( 'From core development and design to support and documentation, every contributor team has a blog, with general news, upcoming events, and opportunities to get started.', 'make-wporg' ); ?></p>
+			<p><?php esc_html_e( 'From core development and design to support and documentation, every contributor team has a blog, with general news, upcoming events, and opportunities to get started.', 'wporg' ); ?></p>
 			<!-- /wp:paragraph -->
 
 		</div>
@@ -51,7 +51,7 @@
 		<div class="wp-block-group">
 			
 			<!-- wp:image -->
-			<figure class="wp-block-image"><img src="<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/assets/community.webp" alt="<?php esc_html_e( 'Community members', 'make-wporg' ); ?>"/></figure>
+			<figure class="wp-block-image"><img src="<?php echo esc_url( get_stylesheet_directory_uri() ); ?>/assets/community.webp" alt="<?php esc_html_e( 'Community members', 'wporg' ); ?>"/></figure>
 			<!-- /wp:image -->
 
 		</div>

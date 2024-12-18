@@ -14,7 +14,7 @@
 	<div class="wp-block-group has-border-color has-light-grey-1-border-color" style="border-width:1px;border-radius:2px;padding-top:var(--wp--preset--spacing--20);padding-right:var(--wp--preset--spacing--20);padding-bottom:var(--wp--preset--spacing--20);padding-left:var(--wp--preset--spacing--20)">
 
 		<!-- wp:paragraph -->
-		<p><?php esc_html_e( 'No sites found.', 'make-wporg' ); ?></p>
+		<p><?php esc_html_e( 'No sites found.', 'wporg' ); ?></p>
 		<!-- /wp:paragraph -->
 
 	</div>
