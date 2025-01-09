@@ -383,6 +383,8 @@ function get_adjacent_handbook_post_link( $output, $format, $link, $post, $adjac
 			'post_type'   => get_post_type( $post_id ),
 		)
 	);
+
+	$adj_index   = 0;
 	$is_previous = 'previous' === $adjacent;
 
 	foreach ( $pages as $i => $page ) {
