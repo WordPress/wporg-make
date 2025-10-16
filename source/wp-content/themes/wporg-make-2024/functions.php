@@ -582,7 +582,7 @@ add_shortcode(
 		$markdown_source = get_markdown_edit_link( $post->ID );
 		// If this is a github page, use the edit URL to generate the
 		// commit history URL
-		if ( isset($markdown_source) && str_contains( $markdown_source, 'github.com' ) ) {
+		if ( isset( $markdown_source ) && str_contains( $markdown_source, 'github.com' ) ) {
 			return str_replace( '/edit/', '/commits/', $markdown_source );
 		}
 		return '#';
