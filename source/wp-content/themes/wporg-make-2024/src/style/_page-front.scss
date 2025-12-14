@@ -123,7 +123,8 @@
 
 		&.make-openverse .wp-block-post-title,
 		&.make-performance .wp-block-post-title,
-		&.make-playground .wp-block-post-title {
+		&.make-playground .wp-block-post-title,
+        &.make-core-ai .wp-block-post-title {
 			&::before {
 				font-family: inherit;
 				content: ".";
@@ -158,5 +159,12 @@
 
 			@extend %make-playground-icon;
 		}
+
+        &.make-core-ai .wp-block-post-title::before {
+          height: 24px;
+          mask-size: 24px;
+
+          @extend %make-core-ai-icon;
+        }
 	}
 }
