@@ -43,7 +43,7 @@
 				sprintf(
 					/* translators: %s: article title */
 					__( 'Improve it on GitHub<span class="screen-reader-text">: %s</span>', 'wporg' ),
-					'[article_title]'
+					do_shortcode( '[article_title]' )
 				)
 			); ?>
 		</a></p>
@@ -65,7 +65,7 @@
 				sprintf(
 					/* translators: %s: article title */
 					__( 'See list of changes<span class="screen-reader-text">: %s</span>', 'wporg' ),
-					'[article_title]'
+					do_shortcode( '[article_title]' )
 				)
 			); ?>
 		</a></p>
