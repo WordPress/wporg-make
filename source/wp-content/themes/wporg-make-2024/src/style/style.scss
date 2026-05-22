@@ -39,6 +39,10 @@ dl.glossary-list dt {
 		padding: var(--wp--preset--spacing--20);
 		width: 100%;
 	}
+
+	img {
+		max-width: 100%;
+	}
 }
 
 .has-three-columns article {
