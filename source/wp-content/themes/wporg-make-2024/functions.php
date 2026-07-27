@@ -1,4 +1,7 @@
 <?php
+/**
+ * Theme functions and definitions.
+ */
 
 namespace WordPressdotorg\Theme\Make_2024;
 
@@ -116,7 +119,7 @@ function get_handbook_navigation_menu() {
 	}
 
 	return array_map(
-		function( $menu_item ) {
+		function ( $menu_item ) {
 			global $wp;
 			$is_current_page = trailingslashit( $menu_item->url ) === trailingslashit( home_url( $wp->request ) );
 
@@ -227,7 +230,7 @@ function style_tables( $content ) {
 	// Find table elements in the content and wrap with figure.wp-block-table
 	$content = preg_replace_callback(
 		'!<table.*?</table>!is',
-		function( $matches ) {
+		function ( $matches ) {
 			return do_blocks(
 				'<!-- wp:table {"className":"is-style-borderless"} --><figure class="wp-block-table is-style-borderless">' .
 				$matches[0] .
@@ -351,7 +354,7 @@ function modify_handbook_search_block_action( $block_content, $block ) {
  */
 add_shortcode(
 	'last_updated',
-	function() {
+	function () {
 		$post = get_post();
 		if ( $post && get_post_modified_time( 'U', true, $post ) > get_post_time( 'U', true, $post ) ) {
 			return esc_html__( 'Last updated', 'wporg' );
@@ -562,7 +565,7 @@ function add_handbook_templates( $templates ) {
  */
 add_shortcode(
 	'article_edit_link',
-	function() {
+	function () {
 		$markdown_source = get_markdown_edit_link( get_post()->ID ?? 0 );
 		if ( $markdown_source ) {
 			return esc_url( $markdown_source );
@@ -576,7 +579,7 @@ add_shortcode(
  */
 add_shortcode(
 	'article_changelog_link',
-	function() {
+	function () {
 		$markdown_source = get_markdown_edit_link( get_post()->ID ?? 0 );
 		// If this is a github page, use the edit URL to generate the
 		// commit history URL
