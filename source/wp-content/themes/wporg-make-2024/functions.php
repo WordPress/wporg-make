@@ -353,8 +353,8 @@ add_shortcode(
 	'last_updated',
 	function() {
 		$post = get_post();
-		if ( $post && get_the_modified_date( 'Ymdhi', $post ) > get_the_date( 'Ymdhi', $post ) ) {
-			return '<p style="font-style:normal;font-weight:700">' . esc_html__( 'Last updated', 'wporg' ) . '</p>';
+		if ( $post && get_post_modified_time( 'U', true, $post ) > get_post_time( 'U', true, $post ) ) {
+			return esc_html__( 'Last updated', 'wporg' );
 		}
 		return '';
 	}
