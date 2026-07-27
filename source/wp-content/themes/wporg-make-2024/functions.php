@@ -352,9 +352,9 @@ function modify_handbook_search_block_action( $block_content, $block ) {
 add_shortcode(
 	'last_updated',
 	function() {
-		global $post;
-		if ( get_the_modified_date( 'Ymdhi', $post->ID ) > get_the_date( 'Ymdhi', $post->ID ) ) {
-			return '<p style="font-style:normal;font-weight:700">' . esc_html__( 'Last updated', 'wporg' ) . '</p>';
+		$post = get_post();
+		if ( $post && get_post_modified_time( 'U', true, $post ) > get_post_time( 'U', true, $post ) ) {
+			return esc_html__( 'Last updated', 'wporg' );
 		}
 		return '';
 	}
@@ -563,8 +563,7 @@ function add_handbook_templates( $templates ) {
 add_shortcode(
 	'article_edit_link',
 	function() {
-		global $post;
-		$markdown_source = get_markdown_edit_link( $post->ID );
+		$markdown_source = get_markdown_edit_link( get_post()->ID ?? 0 );
 		if ( $markdown_source ) {
 			return esc_url( $markdown_source );
 		}
@@ -578,8 +577,7 @@ add_shortcode(
 add_shortcode(
 	'article_changelog_link',
 	function() {
-		global $post;
-		$markdown_source = get_markdown_edit_link( $post->ID );
+		$markdown_source = get_markdown_edit_link( get_post()->ID ?? 0 );
 		// If this is a github page, use the edit URL to generate the
 		// commit history URL
 		if ( $markdown_source && str_contains( $markdown_source, 'github.com' ) ) {
