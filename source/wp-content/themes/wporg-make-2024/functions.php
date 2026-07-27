@@ -563,8 +563,7 @@ function add_handbook_templates( $templates ) {
 add_shortcode(
 	'article_edit_link',
 	function() {
-		global $post;
-		$markdown_source = get_markdown_edit_link( $post->ID );
+		$markdown_source = get_markdown_edit_link( get_post()->ID ?? 0 );
 		if ( $markdown_source ) {
 			return esc_url( $markdown_source );
 		}
@@ -578,8 +577,7 @@ add_shortcode(
 add_shortcode(
 	'article_changelog_link',
 	function() {
-		global $post;
-		$markdown_source = get_markdown_edit_link( $post->ID );
+		$markdown_source = get_markdown_edit_link( get_post()->ID ?? 0 );
 		// If this is a github page, use the edit URL to generate the
 		// commit history URL
 		if ( $markdown_source && str_contains( $markdown_source, 'github.com' ) ) {
