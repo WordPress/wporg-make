@@ -122,7 +122,8 @@
 /* Adjustments for teams with SVG icons. */
 .wporg-make {
 	&.make-openverse .wp-block-site-title,
-	&.make-performance .wp-block-site-title {
+	&.make-performance .wp-block-site-title,
+	&.make-ai .wp-block-site-title {
 		a::before {
 			font-family: inherit;
 			content: ".";
@@ -145,5 +146,10 @@
 	&.make-performance .wp-block-site-title a::before {
 
 		@extend %make-performance-icon;
+	}
+
+	&.make-ai .wp-block-site-title a::before {
+
+		@extend %make-core-ai-icon;
 	}
 }
