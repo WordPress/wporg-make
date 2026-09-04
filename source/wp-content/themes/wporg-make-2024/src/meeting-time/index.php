@@ -40,6 +40,8 @@ function render( $attributes, $content, $block ) {
 
 	// The title is a plain string, so pass it to the handler as an attribute rather than
 	// serialising it into `[meeting_time team="..."]` and having do_shortcode() parse it back.
+	// Calling the handler directly also skips the `pre_do_shortcode_tag` and `do_shortcode_tag`
+	// filters on purpose: nothing should get between the title and this one call.
 	$meeting_time = call_user_func( $shortcode_tags['meeting_time'], array( 'team' => $team ), '', 'meeting_time' );
 
 	$wrapper_attributes = get_block_wrapper_attributes();
