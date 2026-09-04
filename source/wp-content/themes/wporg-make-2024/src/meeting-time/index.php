@@ -29,6 +29,8 @@ function init() {
  * @return string Returns the block markup.
  */
 function render( $attributes, $content, $block ) {
+	global $shortcode_tags;
+
 	if ( ! isset( $block->context['postId'] ) || ! shortcode_exists( 'meeting_time' ) ) {
 		return '';
 	}
@@ -36,10 +38,16 @@ function render( $attributes, $content, $block ) {
 	$post_id = $block->context['postId'];
 	$team = get_post_field( 'post_title', $post_id );
 
+	// The title is a plain string, so pass it to the handler as an attribute rather than
+	// serialising it into `[meeting_time team="..."]` and having do_shortcode() parse it back.
+	// Calling the handler directly also skips the `pre_do_shortcode_tag` and `do_shortcode_tag`
+	// filters on purpose: nothing should get between the title and this one call.
+	$meeting_time = call_user_func( $shortcode_tags['meeting_time'], array( 'team' => $team ), '', 'meeting_time' );
+
 	$wrapper_attributes = get_block_wrapper_attributes();
 	return sprintf(
 		'<div %1$s>%2$s</div>',
 		$wrapper_attributes,
-		do_shortcode( sprintf( '[meeting_time team="%s"][/meeting_time]', esc_attr( $team ) ) )
+		$meeting_time
 	);
 }

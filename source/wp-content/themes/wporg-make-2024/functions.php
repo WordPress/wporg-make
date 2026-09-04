@@ -581,10 +581,9 @@ add_shortcode(
 	'article_changelog_link',
 	function () {
 		$markdown_source = get_markdown_edit_link( get_post()->ID ?? 0 );
-		// If this is a github page, use the edit URL to generate the
-		// commit history URL
-		if ( $markdown_source && str_contains( $markdown_source, 'github.com' ) ) {
-			return str_replace( '/edit/', '/commits/', $markdown_source );
+		// Only a GitHub edit URL has a commit history counterpart.
+		if ( $markdown_source && 'github.com' === strtolower( (string) wp_parse_url( $markdown_source, PHP_URL_HOST ) ) ) {
+			return esc_url( str_replace( '/edit/', '/commits/', $markdown_source ) );
 		}
 		return '#';
 	}
@@ -601,8 +600,9 @@ function get_markdown_edit_link( $post_id ) {
 		return;
 	}
 
-	if ( 'github.com' !== parse_url( $markdown_source, PHP_URL_HOST ) ) {
-		return $markdown_source;
+	// Only a GitHub URL can be turned into an edit link; anything else has no place to send people.
+	if ( 'github.com' !== strtolower( (string) wp_parse_url( $markdown_source, PHP_URL_HOST ) ) ) {
+		return;
 	}
 
 	if ( preg_match( '!^https?://github.com/(?P<repo>[^/]+/[^/]+)/(?P<editblob>blob|edit)/(?P<branchfile>.*)$!i', $markdown_source, $m ) ) {
