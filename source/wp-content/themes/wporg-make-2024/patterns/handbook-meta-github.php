@@ -39,13 +39,15 @@
 
 		<!-- wp:paragraph {"className":"external-link"} -->
 		<p class="external-link"><a href="[article_edit_link]">
-			<?php echo wp_kses_post(
+			<?php
+			echo wp_kses_post(
 				sprintf(
 					/* translators: %s: article title */
 					__( 'Improve it on GitHub<span class="screen-reader-text">: %s</span>', 'wporg' ),
 					esc_html( get_the_title() )
 				)
-			); ?>
+			);
+			?>
 		</a></p>
 		<!-- /wp:paragraph -->
 
@@ -61,13 +63,15 @@
 
 		<!-- wp:paragraph {"className":"external-link"} -->
 		<p class="external-link"><a href="[article_changelog_link]">
-			<?php echo wp_kses_post(
+			<?php
+			echo wp_kses_post(
 				sprintf(
 					/* translators: %s: article title */
 					__( 'See list of changes<span class="screen-reader-text">: %s</span>', 'wporg' ),
 					esc_html( get_the_title() )
 				)
-			); ?>
+			);
+			?>
 		</a></p>
 		<!-- /wp:paragraph -->
 

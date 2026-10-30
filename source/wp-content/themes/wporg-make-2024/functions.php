@@ -22,7 +22,7 @@ add_filter( 'next_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link'
 add_filter( 'post_class', __NAMESPACE__ . '\make_home_site_classes', 10, 3 );
 add_filter( 'post_type_link', __NAMESPACE__ . '\replace_make_site_permalink', 10, 2 );
 add_filter( 'previous_post_link', __NAMESPACE__ . '\get_adjacent_handbook_post_link', 10, 5 );
-add_filter( 'render_block_core/search', __NAMESPACE__ . '\modify_handbook_search_block_action', 10, 2 );
+add_filter( 'render_block_core/search', __NAMESPACE__ . '\modify_handbook_search_block_action' );
 add_filter( 'render_block_data', __NAMESPACE__ . '\modify_header_template_part' );
 add_filter( 'single_template_hierarchy', __NAMESPACE__ . '\add_handbook_templates' );
 add_filter( 'the_content', __NAMESPACE__ . '\style_tables' );
@@ -64,7 +64,7 @@ function make_enqueue_scripts() {
 	// explicitly unregistered. We can load any child-theme overrides by declaring the parent
 	// stylesheet as a dependency.
 	$style_path = get_stylesheet_directory() . '/build/style/style-index.css';
-	$style_uri = get_stylesheet_directory_uri() . '/build/style/style-index.css';
+	$style_uri  = get_stylesheet_directory_uri() . '/build/style/style-index.css';
 	wp_enqueue_style(
 		'wporg-make-2024-style',
 		$style_uri,
@@ -104,7 +104,7 @@ function make_setup_theme() {
  */
 function get_handbook_navigation_menu() {
 	$local_nav_menu_locations = get_nav_menu_locations();
-	$local_nav_menu_object = isset( $local_nav_menu_locations['primary'] )
+	$local_nav_menu_object    = isset( $local_nav_menu_locations['primary'] )
 		? wp_get_nav_menu_object( $local_nav_menu_locations['primary'] )
 		: false;
 
@@ -124,8 +124,8 @@ function get_handbook_navigation_menu() {
 			$is_current_page = trailingslashit( $menu_item->url ) === trailingslashit( home_url( $wp->request ) );
 
 			return array(
-				'label' => esc_html( $menu_item->title ),
-				'url' => esc_url( $menu_item->url ),
+				'label'     => esc_html( $menu_item->title ),
+				'url'       => esc_url( $menu_item->url ),
 				'className' => $is_current_page ? 'current-menu-item' : '',
 			);
 		},
@@ -144,14 +144,14 @@ function _maybe_add_login_item_to_menu( $menu ) {
 
 	global $wp;
 	$redirect_url = home_url( $wp->request );
-	$login_item = array(
+	$login_item   = array(
 		'label' => __( 'Log in', 'wporg' ),
-		'url' => wp_login_url( $redirect_url ),
+		'url'   => wp_login_url( $redirect_url ),
 	);
 
 	if ( $menu ) {
 		$login_item['className'] = 'has-separator';
-		$menu[] = $login_item;
+		$menu[]                  = $login_item;
 	} else {
 		$menu = array( $login_item );
 	}
@@ -169,8 +169,8 @@ function add_site_navigation_menus( $menus ) {
 		$menus['make'] = _maybe_add_login_item_to_menu(
 			array(
 				array(
-					'label' => __( 'Meetings', 'wporg' ),
-					'url'   => site_url( '/meetings/' ),
+					'label'     => __( 'Meetings', 'wporg' ),
+					'url'       => site_url( '/meetings/' ),
 					'className' => is_page( 'meetings' ) ? 'current-menu-item' : '',
 				),
 				array(
@@ -276,12 +276,12 @@ function make_handle_non_post_routes( $posts, $query ) {
 /**
  * Adds custom classes to the array of post classes.
  *
- * @param array  $classes An array of post class names.
- * @param string $class   A comma-separated list of additional classes added to the post.
- * @param int    $id      The post ID.
+ * @param array  $classes   An array of post class names.
+ * @param string $css_class A comma-separated list of additional classes added to the post.
+ * @param int    $id        The post ID.
  * @return array The filtered post class array.
  */
-function make_home_site_classes( $classes, $class, $id ) {
+function make_home_site_classes( $classes, $css_class, $id ) {
 	$classes[] = sanitize_html_class( 'make-' . get_post( $id )->post_name );
 	return $classes;
 }
@@ -324,7 +324,7 @@ function replace_make_site_permalink( $permalink, $post ) {
 		$makesites = make_site_get_network_sites();
 
 		$make_site_id = get_post_meta( $post->ID, 'make_site_id', true );
-		$url = isset( $makesites[ $make_site_id ] ) ? $makesites[ $make_site_id ] : '';
+		$url          = isset( $makesites[ $make_site_id ] ) ? $makesites[ $make_site_id ] : '';
 
 		if ( $url ) {
 			$permalink = $url;
@@ -337,7 +337,7 @@ function replace_make_site_permalink( $permalink, $post ) {
 /**
  * Modify search block action URL for handbook pages
  */
-function modify_handbook_search_block_action( $block_content, $block ) {
+function modify_handbook_search_block_action( $block_content ) {
 	if ( function_exists( 'wporg_is_handbook' ) && wporg_is_handbook() ) {
 		$block_content = preg_replace(
 			'/<form[^>]*action="[^"]*"/',
@@ -485,34 +485,34 @@ function set_site_breadcrumbs( $breadcrumbs ) {
 
 	// Insert the handbook home page as the second breadcrumb.
 	$handbook_home_breadcrumb = array(
-		'url' => $handbook_home_url,
+		'url'   => $handbook_home_url,
 		'title' => __( 'Handbook', 'wporg' ),
 	);
 	array_splice( $breadcrumbs, 1, 0, array( $handbook_home_breadcrumb ) );
 
 	if ( is_search() ) {
 		// Remove all the breadcrumbs after the handbook home breadcrumb.
-		$breadcrumbs = array_slice( $breadcrumbs, 0, 2 );
-		$current_page = get_query_var( 'paged' );
-		$is_paged = $current_page > 1;
+		$breadcrumbs        = array_slice( $breadcrumbs, 0, 2 );
+		$current_page       = get_query_var( 'paged' );
+		$is_paged           = $current_page > 1;
 		$unpaged_search_url = $handbook_home_url . '?s=' . get_search_query();
 
 		// Add a search results breadcrumb.
 		$breadcrumbs[] = array(
-			'url' => $is_paged ? $unpaged_search_url : false,
+			'url'   => $is_paged ? $unpaged_search_url : false,
 			'title' => __( 'Search results', 'wporg' ),
 		);
 
 		if ( $is_paged ) {
 			$breadcrumbs[] = array(
-				'url' => false,
+				'url'   => false,
 				/* translators: %s: Page number */
 				'title' => sprintf( __( 'Page %s', 'wporg' ), $current_page ),
 			);
 		}
 	} else {
 		// Add the ancestors of the current page to the breadcrumbs.
-		$post_id = get_the_ID();
+		$post_id   = get_the_ID();
 		$ancestors = get_post_ancestors( $post_id );
 
 		if ( ! empty( $ancestors ) ) {
@@ -520,7 +520,7 @@ function set_site_breadcrumbs( $breadcrumbs ) {
 				$ancestor_post = get_post( $ancestor );
 
 				$ancestor_breadcrumb = array(
-					'url' => get_permalink( $ancestor_post ),
+					'url'   => get_permalink( $ancestor_post ),
 					'title' => get_the_title( $ancestor_post ),
 				);
 

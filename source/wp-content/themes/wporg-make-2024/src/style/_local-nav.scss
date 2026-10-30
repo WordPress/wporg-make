@@ -12,8 +12,7 @@
 		a[href*="browser"] .wp-block-navigation-item__label,
 		a[href*="timeline"] .wp-block-navigation-item__label,
 		a[href*="newticket"] .wp-block-navigation-item__label {
-			clip: rect(1px, 1px, 1px, 1px);
-			word-wrap: normal !important;
+			overflow-wrap: normal !important;
 			border: 0;
 			clip-path: inset(50%);
 			height: 1px;

@@ -35,13 +35,15 @@
 
 <!-- wp:paragraph -->
 <p>
-<?php echo wp_kses_post(
+<?php
+echo wp_kses_post(
 	sprintf(
 		/* translators: 1: Contributor wizard link */
 		__( 'Check out our <a href="%s">contributor wizard</a> and find how to get started.', 'wporg' ),
 		'https://make.wordpress.org/contribute/',
 	)
-); ?>
+);
+?>
 </p>
 <!-- /wp:paragraph -->
 

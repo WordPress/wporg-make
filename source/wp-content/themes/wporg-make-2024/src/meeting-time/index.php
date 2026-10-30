@@ -36,7 +36,7 @@ function render( $attributes, $content, $block ) {
 	}
 
 	$post_id = $block->context['postId'];
-	$team = get_post_field( 'post_title', $post_id );
+	$team    = get_post_field( 'post_title', $post_id );
 
 	// The title is a plain string, so pass it to the handler as an attribute rather than
 	// serialising it into `[meeting_time team="..."]` and having do_shortcode() parse it back.

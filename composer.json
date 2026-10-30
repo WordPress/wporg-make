@@ -8,7 +8,7 @@
 	},
 	"config": {
 		"platform": {
-			"php": "7.4"
+			"php": "8.4"
 		},
 		"allow-plugins": {
 			"composer/installers": true,
@@ -91,15 +91,10 @@
 	],
 	"require-dev": {
 		"composer/installers": "~1.0",
-		"dealerdirect/phpcodesniffer-composer-installer": "^0.7.0",
-		"phpcompatibility/phpcompatibility-wp": "*",
-		"phpunit/phpunit": "^7.5.20",
 		"wordpress/wporg-contributor-orientation": "dev-build",
 		"wordpress-meta/handbook": "2",
 		"wordpress-meta/pub": "1",
 		"wordpress-meta/wporg-make-sites-cpt": "1",
-		"wp-coding-standards/wpcs": "^3.4.1",
-		"wp-phpunit/wp-phpunit": "^5.4",
 		"wpackagist-plugin/gutenberg": "*",
 		"wpackagist-plugin/wordpress-importer": "*",
 		"wporg/meeting-calendar": "dev-master",
@@ -110,5 +105,7 @@
 	"scripts": {
 		"format": "phpcbf -p",
 		"lint": "phpcs"
-	}
+	},
+	"minimum-stability": "alpha",
+	"prefer-stable": true
 }
