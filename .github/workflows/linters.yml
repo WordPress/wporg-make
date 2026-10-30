@@ -19,11 +19,5 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Lint JavaScript and Styles
-      run: |
-        yarn lint:js
-        yarn lint:css
-
-    - name: Lint PHP
-      run: |
-        yarn lint:php
+    - name: Lint
+      uses: WordPress/wporg-repo-tools/.github/actions/lint@trunk

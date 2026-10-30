@@ -7,9 +7,10 @@ The codebase and development environment for the make.WordPress.org home theme.
 ### Prerequisites
 
 * Docker
-* Node/npm
+* Node 24 (see `.nvmrc`)
 * Yarn
 * Composer
+* PHP 8.4
 
 ### Setup
 
