@@ -597,6 +597,9 @@ add_shortcode(
 function get_markdown_edit_link( $post_id ) {
 	$markdown_source = get_post_meta( $post_id, 'wporg_cli_markdown_source', true );
 	if ( ! $markdown_source ) {
+		$markdown_source = get_post_meta( $post_id, 'wporg_markdown_source', true );
+	}
+	if ( ! $markdown_source ) {
 		return;
 	}
 
