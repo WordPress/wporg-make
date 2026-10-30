@@ -3512,7 +3512,7 @@
   resolved "https://registry.yarnpkg.com/@wordpress/blob/-/blob-5.0.0.tgz#cdfa64cb454aac637175c342368e720ecbd3ed61"
   integrity sha512-BB2FpHEOq1my0Qe6BD/K5SAWt5I40vDZaFxH5PeeUyZ1KCEszaidkwYsY02sXxRK8rK/WOHGii2fOcpIqrmajA==
 
-"@wordpress/block-editor@^19.0.0":
+"@wordpress/block-editor@19.0.0":
   version "19.0.0"
   resolved "https://registry.yarnpkg.com/@wordpress/block-editor/-/block-editor-19.0.0.tgz#6e02004486306cf14df948360b99cec43699358e"
   integrity sha512-HZqOQC10gR7NOU1cUWRrIKx/6XuZBrlbezw8fLgbMpZD91E0oglSqrkvejhE+Ezw8zpDHvD9L/SacfZv8BP/Hw==
@@ -3572,7 +3572,7 @@
   resolved "https://registry.yarnpkg.com/@wordpress/block-serialization-default-parser/-/block-serialization-default-parser-6.0.0.tgz#0b2e67836f9406c107ea518df7a13a7a9946b9e6"
   integrity sha512-C9HgZeToeeNouMGjTnz5WV8z4vNZ+NBrX4af4Npy6F/VrikOpMAYYJ5hi1K07g/o9hzalZMYN+fHXvuQcYK9MQ==
 
-"@wordpress/blocks@^17.0.0":
+"@wordpress/blocks@17.0.0", "@wordpress/blocks@^17.0.0":
   version "17.0.0"
   resolved "https://registry.yarnpkg.com/@wordpress/blocks/-/blocks-17.0.0.tgz#124a8e79fd25c65685b8a1da7d200fa78d76d1fe"
   integrity sha512-6lZpvRhaFvg/GxYa6RXauU67g7ocjR2UloY1i53wFrCPoNgZAIIfn2q94IX5KeE35nSr0u8XdzDjyRwFz0QGYw==
@@ -4107,7 +4107,7 @@
     webpack-cli "^5.1.4"
     webpack-dev-server "^6.0.0"
 
-"@wordpress/server-side-render@^7.0.0":
+"@wordpress/server-side-render@7.0.0":
   version "7.0.0"
   resolved "https://registry.yarnpkg.com/@wordpress/server-side-render/-/server-side-render-7.0.0.tgz#6ed8c6ad78aec2a7bc1c58b9fde6cdf83844c297"
   integrity sha512-0MGJf1lZUFJpPMeY1CVLT0E/q9eu3cbbsSkfQ7Z1DgQP8U+1y4iRZVC0XvYexhq3qX+UiUWcqDjdI1WaYPVOmw==
