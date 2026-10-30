@@ -6,9 +6,9 @@
 	"license": "GPL-2.0-or-later",
 	"private": true,
 	"devDependencies": {
-		"@wordpress/env": "9.7.0",
-		"@wordpress/scripts": "27.9.0",
-		"@wordpress/stylelint-config": "21.34.0"
+		"@wordpress/env": "12.0.0",
+		"@wordpress/scripts": "37.0.0",
+		"@wordpress/stylelint-config": "27.0.0"
 	},
 	"scripts": {
 		"build": "yarn workspaces run build",
@@ -25,5 +25,8 @@
 	},
 	"workspaces": [
 		"source/wp-content/themes/wporg-make-2024"
-	]
+	],
+	"resolutions": {
+		"serialize-javascript": "^7.0.5"
+	}
 }

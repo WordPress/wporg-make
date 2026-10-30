@@ -14,30 +14,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup dependencies
-      run: |
-        sudo apt-get update && sudo apt-get install -y subversion
-        composer install
-
-    - name: Git reset and clean
-      run: |
-        git reset --hard
-        git clean -f -d
-
-    - name: Setup tools
-      run: |
-        yarn setup:tools
-
-    - name: Install NodeJS
-      uses: actions/setup-node@v4
+    - name: Setup
+      uses: WordPress/wporg-repo-tools/.github/actions/setup@trunk
       with:
-        node-version-file: '.nvmrc'
-        cache: 'yarn'
-
-    - name: yarn install and build
-      run: |
-        yarn
-        yarn build
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Lint JavaScript and Styles
       run: |
