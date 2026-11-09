@@ -358,6 +358,27 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Paged views are noindex, follow, while the front page itself stays indexable.
+	 *
+	 * Without it, up to nine extra URLs would be indexed with the same posts as their team blogs.
+	 */
+	public function test_paged_views_are_noindexed(): void {
+		$this->create_post( self::$core );
+
+		$this->go_to( home_url( '/' ) );
+		$this->assertArrayNotHasKey( 'noindex', apply_filters( 'wp_robots', array() ) );
+
+		$this->go_to( home_url( '/?activity-page=2' ) );
+		$this->assertSame(
+			array(
+				'noindex' => true,
+				'follow'  => true,
+			),
+			array_intersect_key( apply_filters( 'wp_robots', array() ), array_flip( array( 'noindex', 'follow' ) ) )
+		);
+	}
+
+	/**
 	 * The "Login to Reply" and To-do bar is removed from team-blog HTML as o2 prints it, while o2's tag line stays.
 	 */
 	public function test_removes_o2_post_actions(): void {

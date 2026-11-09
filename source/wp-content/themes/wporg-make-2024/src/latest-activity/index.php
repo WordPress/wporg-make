@@ -142,20 +142,25 @@ function maybe_redirect(): void {
 add_action( 'template_redirect', __NAMESPACE__ . '\maybe_redirect' );
 
 /**
- * Marks paged views of the front page as noindex.
+ * Marks paged views of the front page noindex, follow.
  *
- * @param mixed $noindex Whether to noindex the request, or a robots value.
- * @return mixed The filtered value.
+ * They repeat the team blogs' posts, which are indexed at their own permalinks, and
+ * their links should still be followed to reach them. Core's robots API is used
+ * because it's output on every site, whichever SEO plugins are loaded.
+ *
+ * @param array<string, bool|string> $robots Robots directives.
+ * @return array<string, bool|string> The filtered directives.
  */
-function noindex_paged_views( mixed $noindex ): mixed {
+function noindex_paged_views( array $robots ): array {
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only paging parameter.
 	if ( is_front_page() && isset( $_GET[ QUERY_ARG ] ) ) {
-		return true;
+		$robots['noindex'] = true;
+		$robots['follow']  = true;
 	}
 
-	return $noindex;
+	return $robots;
 }
-add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\noindex_paged_views' );
+add_filter( 'wp_robots', __NAMESPACE__ . '\noindex_paged_views' );
 
 /**
  * Returns the URL of a page of the block.
