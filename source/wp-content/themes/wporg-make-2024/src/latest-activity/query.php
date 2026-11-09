@@ -157,10 +157,10 @@ function is_members_only( int $blog_id ): bool {
  * Returns one page of activity rows from the allowed blogs, newest first.
  *
  * Results are kept for the request, so the redirect check and the block
- * share one query.
+ * share one query. A failed query is not kept.
  *
  * @param int $page Page number, 1 to MAX_PAGES.
- * @return array{rows: array<int, array{blog_id: int, type: string, object_id: int, date_gmt: string}>, has_older: bool} The page's rows and whether an older page exists.
+ * @return array{rows: array<int, array{blog_id: int, type: string, object_id: int, date_gmt: string}>, has_older: bool, failed: bool} The page's rows, whether an older page exists, and whether the query failed.
  */
 function get_activity_page( int $page ): array {
 	wp_cache_add_non_persistent_groups( REQUEST_CACHE_GROUP );
@@ -170,10 +170,19 @@ function get_activity_page( int $page ): array {
 	$result   = wp_cache_get( $key, REQUEST_CACHE_GROUP );
 
 	if ( ! is_array( $result ) ) {
-		$rows   = query_rows( $blog_ids, $page );
+		$rows = query_rows( $blog_ids, $page );
+		if ( null === $rows ) {
+			return array(
+				'rows'      => array(),
+				'has_older' => false,
+				'failed'    => true,
+			);
+		}
+
 		$result = array(
 			'rows'      => array_slice( $rows, 0, PER_PAGE ),
 			'has_older' => count( $rows ) > PER_PAGE && $page < MAX_PAGES,
+			'failed'    => false,
 		);
 		wp_cache_set( $key, $result, REQUEST_CACHE_GROUP );
 	}
@@ -191,9 +200,9 @@ function get_activity_page( int $page ): array {
  *
  * @param int[] $blog_ids Blog IDs to read.
  * @param int   $page     Page number.
- * @return array<int, array{blog_id: int, type: string, object_id: int, date_gmt: string}> Up to PER_PAGE + 1 rows.
+ * @return array<int, array{blog_id: int, type: string, object_id: int, date_gmt: string}>|null Up to PER_PAGE + 1 rows, or null when the query failed.
  */
-function query_rows( array $blog_ids, int $page ): array {
+function query_rows( array $blog_ids, int $page ): ?array {
 	global $wpdb;
 
 	if ( ! $blog_ids ) {
@@ -215,7 +224,7 @@ function query_rows( array $blog_ids, int $page ): array {
 		$branches[] = "( SELECT {$blog_id} AS blog_id, 'post' AS type, p.ID AS object_id, p.post_date_gmt AS date_gmt
 			FROM {$prefix}posts p
 			WHERE {$post_rules} AND " . get_active_user_sql( 'p.post_author' ) . '
-			ORDER BY p.post_date DESC
+			ORDER BY p.post_date DESC, p.ID DESC
 			LIMIT %d )';
 		array_push( $args, $xpost_like, $limit );
 
@@ -228,7 +237,7 @@ function query_rows( array $blog_ids, int $page ): array {
 				AND NOT EXISTS ( SELECT 1 FROM {$prefix}commentmeta cm WHERE cm.comment_id = c.comment_ID AND cm.meta_key = 'xcomment_origin' )
 				AND " . get_active_user_sql( 'c.user_id' ) . "
 				AND {$post_rules}
-			ORDER BY c.comment_date_gmt DESC
+			ORDER BY c.comment_date_gmt DESC, c.comment_ID DESC
 			LIMIT %d )";
 		array_push( $args, $xpost_like, $limit );
 	}
@@ -239,6 +248,10 @@ function query_rows( array $blog_ids, int $page ): array {
 	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery -- Table names come from get_blog_prefix() for integer blog IDs; every value is a placeholder.
 	$results = $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );
 
+	if ( ! is_array( $results ) || '' !== $wpdb->last_error ) {
+		return null;
+	}
+
 	return array_map(
 		static fn( array $row ): array => array(
 			'blog_id'   => (int) $row['blog_id'],
@@ -246,7 +259,7 @@ function query_rows( array $blog_ids, int $page ): array {
 			'object_id' => (int) $row['object_id'],
 			'date_gmt'  => (string) $row['date_gmt'],
 		),
-		(array) $results
+		$results
 	);
 }
 

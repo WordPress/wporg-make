@@ -58,13 +58,17 @@ function get_requested_page(): int {
 		return 1;
 	}
 
-	// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only, and only digits are accepted.
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only, and only a canonical integer is accepted.
 	$raw = wp_unslash( $_GET[ QUERY_ARG ] );
-	if ( ! is_string( $raw ) || ! ctype_digit( $raw ) ) {
+	if ( ! is_string( $raw ) ) {
 		return 0;
 	}
 
+	// Anything that isn't the integer written plainly ("02", "2abc", " 2") would serve a duplicate page.
 	$page = (int) $raw;
+	if ( (string) $page !== $raw ) {
+		return 0;
+	}
 
 	// Page 1 is served without the parameter, so `?activity-page=1` is a duplicate.
 	return $page >= 2 && $page <= MAX_PAGES ? $page : 0;
@@ -74,31 +78,44 @@ function get_requested_page(): int {
  * Returns where a request for an invalid or empty page should go.
  *
  * Redirecting rather than clamping keeps duplicate pages out of the page cache.
+ * A page number that can never be served redirects permanently. A valid page
+ * that is empty right now redirects temporarily, and a failed query does not
+ * redirect at all, so browsers don't keep a redirect after it recovers.
  *
- * @return string|null The URL without the page parameter, or null when no redirect is needed.
+ * @return array{url: string, status: int}|null The URL without the page parameter and the status to send, or null when no redirect is needed.
  */
-function get_redirect_url(): ?string {
+function get_redirect_url(): ?array {
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only paging parameter.
 	if ( ! is_front_page() || ! isset( $_GET[ QUERY_ARG ] ) ) {
 		return null;
 	}
 
-	$page = get_requested_page();
-	if ( $page && get_activity_page( $page )['rows'] ) {
-		return null;
+	$page   = get_requested_page();
+	$status = 301;
+
+	if ( $page ) {
+		$result = get_activity_page( $page );
+		if ( $result['failed'] || $result['rows'] ) {
+			return null;
+		}
+
+		$status = 302;
 	}
 
-	return remove_query_arg( QUERY_ARG );
+	return array(
+		'url'    => remove_query_arg( QUERY_ARG ),
+		'status' => $status,
+	);
 }
 
 /**
  * Redirects requests for pages that cannot be served.
  */
 function maybe_redirect(): void {
-	$url = get_redirect_url();
+	$redirect = get_redirect_url();
 
-	if ( null !== $url ) {
-		wp_safe_redirect( $url, 301 );
+	if ( null !== $redirect ) {
+		wp_safe_redirect( $redirect['url'], $redirect['status'] );
 		exit;
 	}
 }

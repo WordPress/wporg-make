@@ -243,34 +243,44 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	/**
 	 * Requests for pages that cannot be served redirect instead of being clamped, which would cache duplicates.
 	 *
+	 * Only pages that can never be served redirect permanently; browsers keep a 301.
+	 *
 	 * @dataProvider data_redirects
 	 *
-	 * @param string $value     Value of the page parameter.
-	 * @param int    $posts     Number of posts to create.
-	 * @param bool   $redirects Whether the request should redirect.
+	 * @param string   $value  Value of the page parameter.
+	 * @param int      $posts  Number of posts to create.
+	 * @param int|null $status Expected redirect status, or null for no redirect.
 	 */
-	public function test_redirects_pages_that_cannot_be_served( string $value, int $posts, bool $redirects ): void {
+	public function test_redirects_pages_that_cannot_be_served( string $value, int $posts, ?int $status ): void {
 		for ( $i = 0; $i < $posts; $i++ ) {
 			$this->create_post( self::$core );
 		}
 
 		$this->go_to( home_url( '/?activity-page=' . $value ) );
 
-		$this->assertSame( $redirects ? '/' : null, get_redirect_url() );
+		$expected = null;
+		if ( null !== $status ) {
+			$expected = array(
+				'url'    => '/',
+				'status' => $status,
+			);
+		}
+
+		$this->assertSame( $expected, get_redirect_url() );
 	}
 
 	/**
 	 * Data provider: page parameter values.
 	 *
-	 * @return array<string, array{string, int, bool}>
+	 * @return array<string, array{string, int, int|null}>
 	 */
 	public function data_redirects(): array {
 		return array(
-			'page 2 with content' => array( '2', 21, false ),
-			'page 2 past the end' => array( '2', 1, true ),
-			'page 1, a duplicate' => array( '1', 1, true ),
-			'above the page cap'  => array( '11', 1, true ),
-			'not a number'        => array( 'two', 1, true ),
+			'page 2 with content'         => array( '2', 21, null ),
+			'page 2 past the end for now' => array( '2', 1, 302 ),
+			'page 1, a duplicate'         => array( '1', 1, 301 ),
+			'above the page cap'          => array( '11', 1, 301 ),
+			'not written plainly'         => array( '02', 1, 301 ),
 		);
 	}
 
