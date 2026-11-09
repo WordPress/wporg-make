@@ -234,9 +234,13 @@ function render(): string {
 		STORE,
 		array(
 			/* translators: %s: Time of day. */
-			'yesterday' => __( 'Yesterday at %s', 'wporg' ),
+			'yesterday'     => __( 'Yesterday at %s', 'wporg' ),
 			/* translators: 1: Time of day. 2: Date. */
-			'dateTime'  => __( '%1$s on %2$s', 'wporg' ),
+			'dateTime'      => __( '%1$s on %2$s', 'wporg' ),
+			'loadedMore'    => __( 'More posts loaded.', 'wporg' ),
+			'isAutomatic'   => false,
+			'isLoadingMore' => false,
+			'status'        => '',
 		)
 	);
 
@@ -436,7 +440,7 @@ function render_page( int $from, int $page, bool $has_older, bool $failed, array
 
 	$links = '';
 	if ( $has_older ) {
-		// Without JavaScript this opens the next page; with it, the router swaps in this range extended by that page.
+		// Without JavaScript this link opens the next page; with it, the link is hidden and the router swaps in this range extended by that page as the reader nears it.
 		$range = add_query_arg(
 			array(
 				QUERY_ARG => $page + 1,
@@ -446,22 +450,19 @@ function render_page( int $from, int $page, bool $has_older, bool $failed, array
 		);
 
 		$links .= sprintf(
-			'<a class="wp-block-wporg-make-latest-activity__button wp-block-wporg-make-latest-activity__more" href="%1$s" %2$s data-wp-on--click="actions.loadMore" data-wp-class--is-loading="context.isLoading" data-wp-bind--aria-busy="context.isLoading">%3$s</a>',
+			'<a class="wp-block-wporg-make-latest-activity__button wp-block-wporg-make-latest-activity__more" href="%1$s" data-range="%2$s" data-wp-bind--hidden="state.isAutomatic" data-wp-on--click="actions.loadMore">%3$s</a>
+			<p class="wp-block-wporg-make-latest-activity__loading" hidden data-wp-bind--hidden="!state.isLoadingMore">%4$s</p>',
 			esc_url( get_page_url( $page + 1 ) ),
-			wp_interactivity_data_wp_context(
-				array(
-					'href'      => $range,
-					'isLoading' => false,
-				)
-			),
-			esc_html__( 'Load more', 'wporg' )
+			esc_url( $range ),
+			esc_html__( 'Load more', 'wporg' ),
+			esc_html__( 'Loading more posts…', 'wporg' )
 		);
 	}
 
 	$navigation = '';
 	if ( $links ) {
 		$navigation = sprintf(
-			'<nav class="wp-block-wporg-make-latest-activity__pagination" aria-label="%1$s">%2$s</nav>',
+			'<nav class="wp-block-wporg-make-latest-activity__pagination" aria-label="%1$s" data-wp-init="callbacks.observeMore">%2$s</nav>',
 			esc_attr__( 'Latest activity pages', 'wporg' ),
 			$links
 		);
@@ -476,7 +477,7 @@ function render_page( int $from, int $page, bool $has_older, bool $failed, array
 	}
 
 	return sprintf(
-		'<div %1$s><div class="wp-block-wporg-make-latest-activity__list">%2$s</div>%3$s%4$s</div>',
+		'<div %1$s><div class="wp-block-wporg-make-latest-activity__list">%2$s</div>%3$s%4$s<p class="screen-reader-text" role="status" data-wp-text="state.status"></p></div>',
 		$wrapper_attributes,
 		$list,
 		$navigation,

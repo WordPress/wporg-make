@@ -389,11 +389,15 @@ $o2-meta-color: #23282d;
 		justify-content: center;
 	}
 
-	&__more {
-		&.is-loading {
-			opacity: 0.6;
-			pointer-events: none;
-		}
+	&__more[hidden] {
+		display: none;
+	}
+
+	&__loading {
+		margin: 0;
+		color: var(--wp--preset--color--charcoal-4);
+		font-size: var(--wp--preset--font-size--small);
+		text-align: center;
 	}
 
 	&__end {

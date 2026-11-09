@@ -302,15 +302,7 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 
 		$this->assertSame( 20, substr_count( $html, '<article class="wp-block-wporg-make-latest-activity__item ' ) );
 		$this->assertStringContainsString( 'href="' . esc_url( home_url( '/?activity-page=3#latest-activity' ) ) . '"', $html );
-		$this->assertStringContainsString(
-			wp_interactivity_data_wp_context(
-				array(
-					'href'      => home_url( '/?activity-page=3&activity-from=1' ),
-					'isLoading' => false,
-				)
-			),
-			$html
-		);
+		$this->assertStringContainsString( 'data-range="' . esc_url( home_url( '/?activity-page=3&activity-from=1' ) ) . '"', $html );
 	}
 
 	/**

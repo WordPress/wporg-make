@@ -1,13 +1,17 @@
 /**
- * Interactivity for the Latest activity block: the comments toggle and o2's Follow action.
+ * Interactivity for the Latest activity block: loading more posts, the comments toggle, and o2's Follow action.
  */
 
 /**
  * WordPress dependencies
  */
-import { getContext, getElement, store, withSyncEvent } from '@wordpress/interactivity';
+import { getContext, getElement, store, withScope, withSyncEvent } from '@wordpress/interactivity';
 
 const ITEM = '.wp-block-wporg-make-latest-activity__item';
+const MORE = '.wp-block-wporg-make-latest-activity__more';
+
+// How far below the viewport the next page starts loading, so it's usually there before the reader is.
+const PRELOAD_DISTANCE = 800;
 
 /*
  * Posts on the page when it loads get the team blogs' scripts (glossary tooltips,
@@ -80,40 +84,56 @@ function bindGlossary( root ) {
 	} );
 }
 
+/**
+ * Swaps in the current range extended by the next page, through the router.
+ *
+ * The posts already shown are keyed, so they stay as they are. The URL is replaced
+ * rather than added to history, so Back leaves the page. If the router can't load,
+ * the link's own page opens instead.
+ *
+ * @param {HTMLAnchorElement} more      The Load more link.
+ * @param {boolean}           moveFocus Whether to move focus to the first new post.
+ * @return {boolean} Whether the page was swapped in (the generator's return value).
+ */
+function* loadNext( more, moveFocus ) {
+	if ( state.isLoadingMore ) {
+		return false;
+	}
+
+	const { href } = more;
+	const shown = document.querySelectorAll( ITEM ).length;
+	state.isLoadingMore = true;
+	state.status = '';
+
+	try {
+		const { actions: router } = yield import( '@wordpress/interactivity-router' );
+		yield router.navigate( more.dataset.range, { replace: true } );
+	} catch {
+		window.location.assign( href );
+		return false;
+	} finally {
+		state.isLoadingMore = false;
+	}
+
+	state.status = state.loadedMore;
+	if ( moveFocus ) {
+		document.querySelectorAll( ITEM )[ shown ]?.querySelector( 'h2 a, a' )?.focus();
+	}
+
+	return true;
+}
+
 const { state } = store( 'wporg-make/latest-activity', {
 	actions: {
 		/**
-		 * Loads the next page below the current posts without leaving the page.
-		 *
-		 * The router fetches the current range extended by one page and swaps it in,
-		 * keeping the posts already shown (they're keyed). Focus moves to the first
-		 * new post. If the router can't load, the link's own page opens instead.
+		 * Loads the next page from the link, where the browser can't do it on scroll.
 		 *
 		 * @param {MouseEvent} event Click event.
 		 */
 		loadMore: withSyncEvent( function* ( event ) {
 			event.preventDefault();
 
-			const context = getContext();
-			if ( context.isLoading ) {
-				return;
-			}
-
-			const { ref } = getElement();
-			const shown = document.querySelectorAll( ITEM ).length;
-			context.isLoading = true;
-
-			try {
-				const { actions: router } = yield import( '@wordpress/interactivity-router' );
-				yield router.navigate( context.href );
-			} catch {
-				window.location.assign( ref.href );
-				return;
-			} finally {
-				context.isLoading = false;
-			}
-
-			document.querySelectorAll( ITEM )[ shown ]?.querySelector( 'h2 a, a' )?.focus();
+			yield* loadNext( getElement().ref, true );
 		} ),
 
 		/**
@@ -162,6 +182,59 @@ const { state } = store( 'wporg-make/latest-activity', {
 	},
 
 	callbacks: {
+		/**
+		 * Loads the next page as the reader nears the end of the list.
+		 *
+		 * The link stays for visitors without JavaScript; with it, the link is hidden and
+		 * pages load on their own until there are no more. After each page the end is
+		 * checked again, since a short page can leave it in reach.
+		 *
+		 * @return {(() => void)|undefined} Cleanup that stops watching.
+		 */
+		observeMore() {
+			if ( ! ( 'IntersectionObserver' in window ) ) {
+				return;
+			}
+
+			const { ref } = getElement();
+			state.isAutomatic = true;
+
+			const load = withScope( function* () {
+				/*
+				 * Stop once this nav leaves the page (the router replaced it; its own init
+				 * takes over) or a load fails, or the cached range would load again and again.
+				 */
+				let more = ref.querySelector( MORE );
+				while (
+					more &&
+					ref.isConnected &&
+					ref.getBoundingClientRect().top < window.innerHeight + PRELOAD_DISTANCE
+				) {
+					const range = more.dataset.range;
+					if ( ! ( yield* loadNext( more, false ) ) ) {
+						return;
+					}
+
+					more = ref.querySelector( MORE );
+					if ( more?.dataset.range === range ) {
+						return;
+					}
+				}
+			} );
+
+			const observer = new window.IntersectionObserver(
+				( entries ) => {
+					if ( entries.some( ( entry ) => entry.isIntersecting ) ) {
+						load();
+					}
+				},
+				{ rootMargin: `0px 0px ${ PRELOAD_DISTANCE }px 0px` }
+			);
+			observer.observe( ref );
+
+			return () => observer.disconnect();
+		},
+
 		/**
 		 * Shows the list's `[time]` shortcode dates in the viewer's time zone.
 		 */
