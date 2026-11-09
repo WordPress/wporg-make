@@ -240,7 +240,7 @@ function get_activity_page( int $page ): array {
  *
  * A change to either makes a new key, so stale pages are never served after one.
  *
- * @param string $kind What is cached: "rows" or "html".
+ * @param string $kind What is cached: "rows" or "items".
  * @param int    $page Page number.
  * @return string Cache key.
  */

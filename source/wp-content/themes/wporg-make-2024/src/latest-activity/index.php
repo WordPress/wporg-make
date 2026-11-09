@@ -365,7 +365,11 @@ function render_page( int $page, array $result, array $items ): string {
 		);
 	}
 
-	cache_users( array_unique( array_column( $items, 'user_id' ) ) );
+	$user_ids = array_column( $items, 'user_id' );
+	foreach ( $items as $item ) {
+		$user_ids = array_merge( $user_ids, array_column( (array) $item['comments'], 'user_id' ) );
+	}
+	cache_users( array_unique( $user_ids ) );
 
 	$list = '';
 	foreach ( $items as $item ) {
@@ -526,7 +530,7 @@ function render_follow_link( array $item ): string {
 
 	// Clicking calls the same link with `&ajax`, which o2's handler answers with "1" instead of redirecting, so the viewer stays here.
 	return sprintf(
-		'<a class="wp-block-wporg-make-latest-activity__button%1$s" href="%2$s" %3$s data-wp-bind--href="context.href" data-wp-class--is-following="context.isFollowing" data-wp-on--click="actions.toggleFollow">
+		'<a class="wp-block-wporg-make-latest-activity__button%1$s" href="%2$s" %3$s data-wp-bind--href="context.href" data-wp-class--is-following="context.isFollowing" data-wp-on--click="actions.follow">
 			<span data-wp-bind--hidden="context.isFollowing">%4$s</span>
 			<span hidden data-wp-bind--hidden="!context.isFollowing">%5$s</span>
 		</a>',

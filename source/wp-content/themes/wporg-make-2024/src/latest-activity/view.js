@@ -18,23 +18,24 @@ const { state } = store( 'wporg-make/latest-activity', {
 		},
 
 		/**
-		 * Follows or unfollows a post the way o2 does.
+		 * Follows a post the way o2 does.
 		 *
 		 * Flips the button optimistically, calls the Follow link with `&ajax`, and flips it
-		 * back unless o2's handler answers "1".
+		 * back unless o2's handler answers "1". Unfollowing isn't offered: the wordpress.org
+		 * handler doesn't act on `post-comment-unsubscribe`, so it would only change the button.
 		 *
 		 * @param {MouseEvent} event Click event.
 		 */
-		*toggleFollow( event ) {
+		*follow( event ) {
 			event.preventDefault();
 
 			const context = getContext();
-			const following = ! context.isFollowing;
-			context.isFollowing = following;
+			if ( context.isFollowing || context.isBusy ) {
+				return;
+			}
 
-			const [ current, next ] = following
-				? [ 'post-comment-subscribe', 'post-comment-unsubscribe' ]
-				: [ 'post-comment-unsubscribe', 'post-comment-subscribe' ];
+			context.isBusy = true;
+			context.isFollowing = true;
 
 			try {
 				const response = yield fetch( `${ context.href }&ajax=1`, {
@@ -45,10 +46,10 @@ const { state } = store( 'wporg-make/latest-activity', {
 				if ( ! response.ok || '1' !== body.trim() ) {
 					throw new Error( 'Follow request failed.' );
 				}
-
-				context.href = context.href.replace( `action=${ current }`, `action=${ next }` );
 			} catch {
-				context.isFollowing = ! following;
+				context.isFollowing = false;
+			} finally {
+				context.isBusy = false;
 			}
 		},
 	},
