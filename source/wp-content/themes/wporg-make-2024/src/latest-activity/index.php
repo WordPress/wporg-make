@@ -213,6 +213,7 @@ function render(): string {
 	}
 
 	enqueue_block_styles( $items );
+	enqueue_content_scripts( $items );
 
 	wp_interactivity_state(
 		STORE,
@@ -243,6 +244,80 @@ function enqueue_block_styles( array $items ): void {
 			}
 		}
 	}
+}
+
+/**
+ * Enqueues the team blogs' scripts that the posts' markup relies on.
+ *
+ * Glossary tooltips (wporg-glossary) and code highlighting (code-syntax-block's Prism)
+ * come through in the team blogs' rendered HTML, but their scripts are only enqueued
+ * there. The plugins' own handles are used when they're registered on the root; otherwise
+ * the same files are registered from the shared plugin and theme directories.
+ *
+ * @param array<int, array<string, mixed>> $items Posts from get_items().
+ */
+function enqueue_content_scripts( array $items ): void {
+	$html = '';
+	foreach ( $items as $item ) {
+		$html .= $item['content'] . implode( '', array_column( (array) $item['comments'], 'content' ) );
+	}
+
+	if ( str_contains( $html, 'glossary-item-container' ) ) {
+		enqueue_asset( 'script', 'popper', 'plugins', 'wporg-glossary/js/popper.min.js' );
+		enqueue_asset( 'script', 'tippy', 'plugins', 'wporg-glossary/js/tippy.min.js', array( 'popper' ) );
+		enqueue_asset( 'script', 'glossary-hovercards', 'plugins', 'wporg-glossary/js/glossary-hovercards.js', array( 'jquery', 'hoverintent-js', 'tippy' ) );
+		enqueue_asset( 'style', 'glossary-hovercards', 'plugins', 'wporg-glossary/css/glossary-hovercards.css' );
+	}
+
+	if ( preg_match( '/class="[^"]*\blanguage-/', $html ) ) {
+		$prism = enqueue_asset( 'script', 'mkaz-code-syntax-prism-js', 'plugins', 'code-syntax-block/assets/prism/prism.js' );
+		enqueue_asset( 'style', 'mkaz-code-syntax-prism-css', 'themes', 'pub/wporg-breathe-2024/assets/prism/prism.css' );
+
+		if ( $prism ) {
+			// Prism's autoloader finds language files through this setting, as on the team blogs.
+			wp_add_inline_script( 'mkaz-code-syntax-prism-js', 'var prism_settings = ' . wp_json_encode( array( 'pluginUrl' => plugins_url( 'code-syntax-block/' ) ) ) . ';', 'before' );
+			wp_add_inline_script( 'mkaz-code-syntax-prism-js', 'document.addEventListener( "DOMContentLoaded", function () { Prism.highlightAll(); } );' );
+		}
+	}
+}
+
+/**
+ * Enqueues a script or stylesheet, registering it from a file in the shared plugin or theme directory if needed.
+ *
+ * @param string   $type   "script" or "style".
+ * @param string   $handle Handle the owning plugin registers it under.
+ * @param string   $root   "plugins" or "themes".
+ * @param string   $path   File path relative to that directory.
+ * @param string[] $deps   Dependencies, used when registering.
+ * @return bool Whether it was enqueued: the file is missing when the plugin or theme isn't installed.
+ */
+function enqueue_asset( string $type, string $handle, string $root, string $path, array $deps = array() ): bool {
+	$is_registered = 'script' === $type ? wp_script_is( $handle, 'registered' ) : wp_style_is( $handle, 'registered' );
+
+	if ( ! $is_registered ) {
+		$dir  = 'plugins' === $root ? WP_PLUGIN_DIR : get_theme_root();
+		$file = $dir . '/' . $path;
+		if ( ! is_file( $file ) ) {
+			return false;
+		}
+
+		$url     = 'plugins' === $root ? plugins_url( $path ) : get_theme_root_uri() . '/' . $path;
+		$version = (string) filemtime( $file );
+
+		if ( 'script' === $type ) {
+			wp_register_script( $handle, $url, $deps, $version, array( 'in_footer' => true ) );
+		} else {
+			wp_register_style( $handle, $url, $deps, $version );
+		}
+	}
+
+	if ( 'script' === $type ) {
+		wp_enqueue_script( $handle );
+	} else {
+		wp_enqueue_style( $handle );
+	}
+
+	return true;
 }
 
 /**
