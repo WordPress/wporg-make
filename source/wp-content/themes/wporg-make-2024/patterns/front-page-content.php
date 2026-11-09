@@ -43,6 +43,10 @@
 		</div>
 		<!-- /wp:query -->
 
+		<!-- wp:paragraph {"style":{"spacing":{"margin":{"top":"var:preset|spacing|20"}}},"fontSize":"small"} -->
+		<p class="has-small-font-size" style="margin-top:var(--wp--preset--spacing--20)"><a href="<?php echo esc_url( home_url( '/teams/' ) ); ?>"><?php esc_html_e( 'All teams and their meetings', 'wporg' ); ?></a></p>
+		<!-- /wp:paragraph -->
+
 	</div>
 	<!-- /wp:column -->
 
