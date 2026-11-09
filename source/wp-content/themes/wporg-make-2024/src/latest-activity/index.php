@@ -362,8 +362,9 @@ function render_post( array $item ): string {
  * Renders o2's Follow link for a post, for logged-in viewers on posts open to comments, as o2 does.
  *
  * It points at the team blog with the same query arguments and nonce as o2's own link, so the
- * team blog's o2 Follow handler subscribes the viewer and sends them back to the post. The
- * nonce is valid there because the network shares the login cookie and nonce salts.
+ * team blog's o2 Follow handler subscribes the viewer. The nonce is valid there because the
+ * network shares the login cookie and nonce salts. Without JavaScript the link still works,
+ * and the handler sends the viewer to the post.
  *
  * @param array<string, mixed> $item Post from get_items().
  * @return string Follow link markup, or an empty string.
@@ -384,12 +385,24 @@ function render_follow_link( array $item ): string {
 		$item['team']['url']
 	);
 
+	$url = add_query_arg( '_wpnonce', wp_create_nonce( 'post-comment-subscribe-' . $post_id ), $url );
+
+	// Clicking calls the same link with `&ajax`, which o2's handler answers with "1" instead of redirecting, so the viewer stays here.
 	return sprintf(
-		'<a class="wp-block-wporg-make-latest-activity__button%1$s" href="%2$s" title="%3$s">%4$s</a>',
+		'<a class="wp-block-wporg-make-latest-activity__button%1$s" href="%2$s" %3$s data-wp-bind--href="context.href" data-wp-class--is-following="context.isFollowing" data-wp-on--click="actions.toggleFollow">
+			<span data-wp-bind--hidden="context.isFollowing">%4$s</span>
+			<span hidden data-wp-bind--hidden="!context.isFollowing">%5$s</span>
+		</a>',
 		$following ? ' is-following' : '',
-		esc_url( wp_nonce_url( $url, 'post-comment-subscribe-' . $post_id ) ),
-		$following ? esc_attr__( 'Unfollow comments', 'wporg' ) : esc_attr__( 'Follow comments', 'wporg' ),
-		$following ? esc_html__( 'Following', 'wporg' ) : esc_html__( 'Follow', 'wporg' )
+		esc_url( $url ),
+		wp_interactivity_data_wp_context(
+			array(
+				'isFollowing' => $following,
+				'href'        => $url,
+			)
+		),
+		esc_html__( 'Follow', 'wporg' ),
+		esc_html__( 'Following', 'wporg' )
 	);
 }
 
