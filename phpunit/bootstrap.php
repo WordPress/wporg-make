@@ -26,4 +26,7 @@ tests_add_filter(
 	}
 );
 
+// Test blogs have no web server behind them, so render posts and comments locally instead of through their REST API.
+tests_add_filter( 'wporg_make_latest_activity_rest_base', '__return_empty_string' );
+
 require $_tests_dir . '/includes/bootstrap.php';

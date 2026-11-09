@@ -65,10 +65,17 @@ $o2-meta-color: #23282d;
 		a {
 			color: var(--wp--preset--color--charcoal-1);
 			text-decoration: none;
+
+			&:hover,
+			&:focus {
+				color: $o2-blue;
+			}
 		}
 	}
 
-	&__content {
+	// Content styles from o2 (p2-breathe and wporg-breathe-2024), which aren't loaded on the root.
+	&__content,
+	&__comment-content {
 		overflow-wrap: anywhere;
 
 		p {
@@ -76,10 +83,138 @@ $o2-meta-color: #23282d;
 		}
 
 		img,
-		video,
-		iframe {
+		video {
 			max-width: 100%;
 			height: auto;
+		}
+
+		// An iframe has no intrinsic ratio, so its height has to stay as embedded.
+		iframe {
+			max-width: 100%;
+		}
+
+		strong,
+		b {
+			font-weight: 600;
+		}
+
+		ul,
+		ol {
+			margin: 0 0 20px;
+		}
+
+		ul ul {
+			margin-inline-start: 1.2em;
+			list-style-type: disc;
+		}
+
+		figure {
+			margin: 0 0 20px;
+		}
+
+		blockquote {
+			overflow: auto;
+			margin: 0 0 1.2em;
+			padding: 1.2em 1.2em 0;
+			background: #f1f1f1;
+			color: #222;
+			font-style: italic;
+			font-weight: 300;
+
+			code {
+				background: #fafafa;
+			}
+
+			em {
+				font-style: normal;
+			}
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+
+			a {
+				text-decoration: none;
+			}
+		}
+
+		th,
+		td {
+			padding: var(--wp--preset--spacing--20);
+			border: 1px solid var(--wp--preset--color--light-grey-1);
+			font-weight: 400;
+			text-align: start;
+		}
+
+		th {
+			font-weight: 700;
+		}
+
+		thead {
+			border-bottom: 1px solid var(--wp--preset--color--charcoal-1);
+		}
+
+		a.mention {
+			font-weight: 700;
+			text-decoration: none;
+
+			&:hover {
+				text-decoration: underline;
+			}
+		}
+
+		a.tag,
+		a.po-xpost {
+			text-decoration: none;
+
+			&:hover {
+				text-decoration: underline;
+			}
+		}
+	}
+
+	// Outrank the parent theme's heading margins and the root's `.entry-content code` rules.
+	& &__item &__content,
+	& &__item &__comment-content {
+		h2 {
+			font-size: 29px;
+			line-height: 1.2;
+		}
+
+		h3 {
+			margin-block-start: 20px;
+			font-size: 20px;
+		}
+
+		h4 {
+			margin: 50px 0 20px;
+			font-size: 16px;
+		}
+
+		code {
+			display: inline;
+			padding: 3px;
+			color: #222;
+			white-space: normal;
+		}
+
+		pre {
+			overflow-x: auto;
+			padding: 13px;
+			border: 1px solid var(--wp--preset--color--light-grey-1);
+			background: var(--wp--preset--color--white);
+			font-size: 13px;
+			line-height: 1.8;
+			white-space: pre;
+
+			code {
+				display: block;
+				padding: 0;
+				background: none;
+				font-size: inherit;
+				white-space: inherit;
+			}
 		}
 	}
 
@@ -140,10 +275,6 @@ $o2-meta-color: #23282d;
 		font: inherit;
 		line-height: 28px;
 		cursor: pointer;
-
-		&:hover span {
-			text-decoration: underline;
-		}
 	}
 
 	&__icon {
@@ -225,14 +356,27 @@ $o2-meta-color: #23282d;
 		font-size: 12px;
 		line-height: 20px;
 		text-decoration: none;
-
-		&:hover {
-			text-decoration: underline;
-		}
 	}
 
 	&__children {
 		padding-inline-start: 45px;
+	}
+
+	// As on o2, meta links don't underline on hover, and the grey date links turn link blue.
+	& &__header a,
+	& &__comment-meta a,
+	& &__comment-reply {
+		&:hover,
+		&:focus {
+			text-decoration: none;
+		}
+	}
+
+	& &__date a:hover,
+	& &__date a:focus,
+	& &__time:hover,
+	& &__time:focus {
+		color: $o2-blue;
 	}
 
 	&__pagination {

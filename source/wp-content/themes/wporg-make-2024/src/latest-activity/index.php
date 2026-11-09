@@ -189,16 +189,75 @@ function render(): string {
 	 * The markup is built per request, because Follow links carry a nonce for the viewer.
 	 */
 	$cache_key = get_cache_key( 'items', $page );
-	$items     = wp_cache_get( $cache_key, CACHE_GROUP );
-	if ( ! is_array( $items ) ) {
+	$cached    = wp_cache_get( $cache_key, CACHE_GROUP );
+	if ( is_array( $cached ) && isset( $cached['items'], $cached['css'] ) ) {
+		$items = $cached['items'];
+		add_block_supports_css( (string) $cached['css'] );
+	} else {
 		$items = get_items( $result['rows'], get_allowed_sites() );
 
+		// Rendering the posts added their layout rules to this request's block-supports styles; keep them for cache hits.
+		$css = (string) wp_style_engine_get_stylesheet_from_context( 'block-supports', array( 'prettify' => false ) );
+
 		if ( ! $result['failed'] ) {
-			wp_cache_set( $cache_key, $items, CACHE_GROUP, CACHE_TTL );
+			wp_cache_set(
+				$cache_key,
+				array(
+					'items' => $items,
+					'css'   => $css,
+				),
+				CACHE_GROUP,
+				CACHE_TTL
+			);
 		}
 	}
 
+	enqueue_block_styles( $items );
+
+	wp_interactivity_state(
+		STORE,
+		array(
+			/* translators: %s: Time of day. */
+			'yesterday' => __( 'Yesterday at %s', 'wporg' ),
+			/* translators: 1: Time of day. 2: Date. */
+			'dateTime'  => __( '%1$s on %2$s', 'wporg' ),
+		)
+	);
+
 	return render_page( $page, $result, $items );
+}
+
+/**
+ * Enqueues the stylesheets of the core blocks used in the posts.
+ *
+ * Rendering a block enqueues its stylesheet, but cached posts aren't rendered again.
+ *
+ * @param array<int, array<string, mixed>> $items Posts from get_items().
+ */
+function enqueue_block_styles( array $items ): void {
+	foreach ( $items as $item ) {
+		foreach ( (array) ( $item['blocks'] ?? array() ) as $name ) {
+			$handle = 'wp-block-' . substr( (string) $name, 5 );
+			if ( str_starts_with( (string) $name, 'core/' ) && wp_style_is( $handle, 'registered' ) ) {
+				wp_enqueue_style( $handle );
+			}
+		}
+	}
+}
+
+/**
+ * Adds the cached layout rules of the posts' blocks to the page.
+ *
+ * @param string $css Block-supports CSS saved when the posts were rendered.
+ */
+function add_block_supports_css( string $css ): void {
+	if ( '' === $css ) {
+		return;
+	}
+
+	wp_register_style( 'wporg-make-latest-activity-block-supports', false, array(), '1' );
+	wp_add_inline_style( 'wporg-make-latest-activity-block-supports', $css );
+	wp_enqueue_style( 'wporg-make-latest-activity-block-supports' );
 }
 
 /**
@@ -214,6 +273,7 @@ function render_page( int $page, array $result, array $items ): string {
 		array(
 			'id'                  => ANCHOR,
 			'data-wp-interactive' => STORE,
+			'data-wp-init'        => 'callbacks.localizeShortcodeTimes',
 		)
 	);
 
@@ -329,7 +389,7 @@ function render_post( array $item ): string {
 				<a class="wp-block-wporg-make-latest-activity__avatar" href="%3$s"><img src="%4$s" alt="" width="50" height="50" loading="lazy" /></a>
 				<a class="wp-block-wporg-make-latest-activity__author" href="%3$s">%5$s</a>
 				<span class="wp-block-wporg-make-latest-activity__date"><a href="%6$s">%7$s</a> · %8$s</span>
-				<h2 class="wp-block-wporg-make-latest-activity__title"><a href="%9$s">%10$s</a></h2>
+				%10$s
 			</header>
 			<div class="wp-block-wporg-make-latest-activity__content">%11$s</div>
 			<nav class="wp-block-wporg-make-latest-activity__actions" aria-label="%12$s">
@@ -347,7 +407,9 @@ function render_post( array $item ): string {
 		esc_html( $item['team']['name'] ),
 		render_time( $url, (string) $item['date_gmt'] ),
 		esc_url( $url ),
-		esc_html( (string) $item['title'] ),
+		empty( $item['title_generated'] )
+			? sprintf( '<h2 class="wp-block-wporg-make-latest-activity__title"><a href="%1$s">%2$s</a></h2>', esc_url( $url ), esc_html( (string) $item['title'] ) )
+			: '',
 		$item['content'],
 		esc_attr__( 'Post actions', 'wporg' ),
 		esc_url( $url . '#respond' ),
@@ -533,10 +595,21 @@ function render_time( string $url, string $date_gmt ): string {
 		$text = sprintf( __( '%1$s on %2$s', 'wporg' ), wp_date( $time_format, $timestamp ), wp_date( (string) get_option( 'date_format' ), $timestamp ) );
 	}
 
+	/* translators: 1: Time of day. 2: Date. */
+	$title = sprintf( __( '%1$s on %2$s', 'wporg' ), wp_date( $time_format . ' (P)', $timestamp ), wp_date( (string) get_option( 'date_format' ), $timestamp ) );
+
+	// The text lives in context so the browser can switch it to the viewer's time zone, as o2 does.
 	return sprintf(
-		'<a class="wp-block-wporg-make-latest-activity__time" href="%1$s"><time datetime="%2$s">%3$s</time></a>',
+		'<a class="wp-block-wporg-make-latest-activity__time" href="%1$s"><time datetime="%2$s" title="%3$s" %4$s data-wp-text="context.text" data-wp-bind--title="context.title" data-wp-init="callbacks.localizeTime">%5$s</time></a>',
 		esc_url( $url ),
 		esc_attr( mysql_to_rfc3339( $date_gmt ) . 'Z' ),
+		esc_attr( $title ),
+		wp_interactivity_data_wp_context(
+			array(
+				'text'  => $text,
+				'title' => $title,
+			)
+		),
 		esc_html( $text )
 	);
 }

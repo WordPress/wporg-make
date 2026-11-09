@@ -375,6 +375,16 @@ function get_items( array $rows, array $sites ): array {
 		}
 	}
 
+	// Prefer each team blog's own rendering; the local rendering stays for anything it doesn't return.
+	$rendered = fetch_rendered_content( $loaded, $sites );
+	foreach ( $loaded as $key => $item ) {
+		$loaded[ $key ]['content'] = $rendered['posts'][ $key ] ?? $item['content'];
+
+		foreach ( $item['comments'] as $index => $comment ) {
+			$loaded[ $key ]['comments'][ $index ]['content'] = $rendered['comments'][ "{$item['blog_id']}:{$comment['id']}" ] ?? $comment['content'];
+		}
+	}
+
 	$items = array();
 	foreach ( $rows as $row ) {
 		$key = "{$row['blog_id']}:{$row['post_id']}";
@@ -384,6 +394,136 @@ function get_items( array $rows, array $sites ): array {
 	}
 
 	return $items;
+}
+
+/**
+ * Fetches each team blog's own rendering of the given posts and comments from its REST API.
+ *
+ * Content shown on the root is rendered in the root's request, where the team blogs'
+ * plugins (o2, Jetpack Mentions, the glossary, Trac links, the time shortcode) are not
+ * loaded. The REST API runs the team blog's full `the_content` and `comment_text`
+ * filters. All requests run in parallel; a failed or invalid response leaves those
+ * items to the local rendering.
+ *
+ * @param array<string, array<string, mixed>> $loaded Posts from load_posts(), keyed by "blog:id".
+ * @param array<int, array{url: string}>      $sites  Allowed blogs.
+ * @return array{posts: array<string, string>, comments: array<string, string>} Rendered HTML keyed by "blog:id".
+ */
+function fetch_rendered_content( array $loaded, array $sites ): array {
+	$rendered = array(
+		'posts'    => array(),
+		'comments' => array(),
+	);
+
+	$ids = array();
+	foreach ( $loaded as $item ) {
+		$ids[ $item['blog_id'] ]['posts'][] = $item['id'];
+		foreach ( $item['comments'] as $comment ) {
+			$ids[ $item['blog_id'] ]['comments'][] = $comment['id'];
+		}
+	}
+
+	$requests = array();
+	foreach ( $ids as $blog_id => $blog_ids ) {
+		/**
+		 * Filters the REST API base URL of a team blog, or turns off fetching with an empty string.
+		 *
+		 * @param string $base    REST base URL, ending in a slash.
+		 * @param int    $blog_id Blog ID.
+		 */
+		$base = (string) apply_filters( 'wporg_make_latest_activity_rest_base', $sites[ $blog_id ]['url'] . 'wp-json/wp/v2/', $blog_id );
+		if ( '' === $base ) {
+			continue;
+		}
+
+		$chunks = array(
+			'posts'    => array_chunk( $blog_ids['posts'], 100 ),
+			'comments' => array_chunk( $blog_ids['comments'] ?? array(), 100 ),
+		);
+		foreach ( $chunks as $type => $type_chunks ) {
+			foreach ( $type_chunks as $index => $chunk ) {
+				$requests[ "{$type}:{$blog_id}:{$index}" ] = array(
+					'url' => add_query_arg(
+						array(
+							'include'  => implode( ',', $chunk ),
+							'per_page' => count( $chunk ),
+							'_fields'  => 'id,content',
+						),
+						$base . $type
+					),
+				);
+			}
+		}
+	}
+
+	if ( ! $requests || ! class_exists( '\WpOrg\Requests\Requests' ) ) {
+		return $rendered;
+	}
+
+	/**
+	 * Filters the headers sent with the REST requests to the team blogs.
+	 *
+	 * @param array<string, string> $headers Request headers.
+	 */
+	$headers = (array) apply_filters( 'wporg_make_latest_activity_rest_headers', array() );
+	foreach ( $requests as $key => $request ) {
+		$requests[ $key ] += array(
+			'headers' => $headers,
+			'type'    => 'GET',
+		);
+	}
+
+	try {
+		$responses = \WpOrg\Requests\Requests::request_multiple(
+			$requests,
+			array(
+				'timeout'         => 3,
+				'connect_timeout' => 2,
+			)
+		);
+	} catch ( \Exception $exception ) {
+		return $rendered;
+	}
+
+	foreach ( $responses as $key => $response ) {
+		if ( ! $response instanceof \WpOrg\Requests\Response || 200 !== $response->status_code ) {
+			continue;
+		}
+
+		$data = json_decode( $response->body, true );
+		if ( ! is_array( $data ) ) {
+			continue;
+		}
+
+		list( $type, $blog_id ) = explode( ':', (string) $key );
+		foreach ( $data as $row ) {
+			if ( isset( $row['id'], $row['content']['rendered'] ) && is_string( $row['content']['rendered'] ) ) {
+				$rendered[ $type ][ $blog_id . ':' . (int) $row['id'] ] = $row['content']['rendered'];
+			}
+		}
+	}
+
+	return $rendered;
+}
+
+/**
+ * Returns the names of the blocks in parsed block content, nested blocks included.
+ *
+ * @param array<int, array<string, mixed>> $blocks Parsed blocks.
+ * @return string[] Block names.
+ */
+function get_block_names( array $blocks ): array {
+	$names = array();
+	foreach ( $blocks as $block ) {
+		if ( ! empty( $block['blockName'] ) ) {
+			$names[] = (string) $block['blockName'];
+		}
+		if ( ! empty( $block['innerBlocks'] ) ) {
+			$names = array_merge( $names, get_block_names( $block['innerBlocks'] ) );
+		}
+	}
+
+	return array_values( array_unique( $names ) );
 }
 
 /**
@@ -420,14 +560,18 @@ function load_posts( int $blog_id, array $post_ids ): array {
 		unset( $comment );
 
 		$items[ "{$blog_id}:{$post->ID}" ] = array(
-			'id'            => $post->ID,
-			'user_id'       => (int) $post->post_author,
-			'date_gmt'      => $post->post_date_gmt,
-			'title'         => get_title( $post ),
-			'content'       => get_post_html( $post ),
-			'url'           => $url,
-			'comments_open' => comments_open( $post ),
-			'comments'      => $post_comments,
+			'blog_id'         => $blog_id,
+			'id'              => $post->ID,
+			// o2 hides titles it generated from the first words of the content.
+			'title_generated' => wp_trim_words( $post->post_content, 5 ) === $post->post_title,
+			'blocks'          => get_block_names( parse_blocks( $post->post_content ) ),
+			'user_id'         => (int) $post->post_author,
+			'date_gmt'        => $post->post_date_gmt,
+			'title'           => get_title( $post ),
+			'content'         => get_post_html( $post ),
+			'url'             => $url,
+			'comments_open'   => comments_open( $post ),
+			'comments'        => $post_comments,
 		);
 	}
 
