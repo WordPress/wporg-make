@@ -275,18 +275,26 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Rendered items escape titles, strip team-blog shortcodes and link comments to their anchor on the team blog.
+	 * Posts render their content as the team blog would, titles are escaped, and comments link to their anchor.
+	 *
+	 * Team-blog shortcodes are unknown on the root, so their tags go while what they enclose stays.
 	 */
 	public function test_render_links_and_escapes_items(): void {
-		$post_id    = $this->create_post( self::$core, array( 'post_title' => 'Ship <script>alert(1)</script> it' ) );
-		$comment_id = $this->create_comment( self::$core, $post_id, array( 'comment_content' => 'Looks good [team-only-shortcode id="1"] to me' ) );
+		$post_id    = $this->create_post(
+			self::$core,
+			array(
+				'post_title'   => 'Ship <script>alert(1)</script> it',
+				'post_content' => '<!-- wp:paragraph --><p>Release [team-only-shortcode id="1"]notes[/team-only-shortcode] are up.</p><!-- /wp:paragraph -->',
+			)
+		);
+		$comment_id = $this->create_comment( self::$core, $post_id );
 
 		$this->go_to( home_url( '/' ) );
 		$html = render();
 
 		$this->assertStringNotContainsString( '<script>', $html );
+		$this->assertStringContainsString( '>Release notes are up.</p>', $html );
 		$this->assertStringContainsString( esc_url( get_blog_permalink( self::$core, $post_id ) . '#comment-' . $comment_id ), $html );
-		$this->assertStringContainsString( 'Looks good to me', $html );
 	}
 
 	/**

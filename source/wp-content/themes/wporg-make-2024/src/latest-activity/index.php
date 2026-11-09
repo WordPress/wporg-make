@@ -208,6 +208,9 @@ function render(): string {
 /**
  * Renders one post or comment.
  *
+ * Posts look the way they do on an o2 blog: a byline, the title and the full
+ * content. Comments are shown on their own, so their byline names the post.
+ *
  * @param array<string, mixed> $item Item from get_items().
  * @return string List item markup.
  */
@@ -217,26 +220,27 @@ function render_item( array $item ): string {
 		return '';
 	}
 
+	$url    = (string) $item['url'];
 	$author = sprintf(
-		'<a href="%1$s">%2$s</a>',
+		'<a class="wp-block-wporg-make-latest-activity__author" href="%1$s">%2$s</a>',
 		esc_url( 'https://profiles.wordpress.org/' . $user->user_nicename . '/' ),
 		esc_html( $user->display_name )
 	);
-	$title  = sprintf(
-		'<a href="%1$s">%2$s</a>',
-		esc_url( (string) $item['url'] ),
-		esc_html( (string) $item['title'] )
-	);
 
-	$summary = 'comment' === $item['type']
-		/* translators: 1: Linked author name. 2: Linked post title. */
-		? sprintf( __( '%1$s commented on %2$s', 'wporg' ), $author, $title )
-		/* translators: 1: Linked author name. 2: Linked post title. */
-		: sprintf( __( '%1$s published %2$s', 'wporg' ), $author, $title );
+	$is_comment = 'comment' === $item['type'];
+	if ( $is_comment ) {
+		$author = sprintf(
+			/* translators: 1: Linked author name. 2: Linked post title. */
+			__( '%1$s commented on %2$s', 'wporg' ),
+			$author,
+			sprintf( '<a href="%1$s">%2$s</a>', esc_url( $url ), esc_html( (string) $item['title'] ) )
+		);
+	}
 
 	$timestamp = (int) strtotime( $item['date_gmt'] . ' UTC' );
 	$time      = sprintf(
-		'<time datetime="%1$s" title="%2$s">%3$s</time>',
+		'<a href="%1$s"><time datetime="%2$s" title="%3$s">%4$s</time></a>',
+		esc_url( $url ),
 		esc_attr( mysql_to_rfc3339( (string) $item['date_gmt'] ) . 'Z' ),
 		esc_attr( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp ) ),
 		/* translators: %s: Human-readable time difference, such as "2 hours". */
@@ -244,25 +248,38 @@ function render_item( array $item ): string {
 	);
 
 	$team = sprintf(
-		'<a class="wp-block-wporg-make-latest-activity__team" href="%1$s">%2$s</a>',
+		'<a href="%1$s">%2$s</a>',
 		esc_url( $item['team']['url'] ),
 		esc_html( $item['team']['name'] )
 	);
 
+	$title = '';
+	if ( ! $is_comment ) {
+		$title = sprintf(
+			'<h3 class="wp-block-wporg-make-latest-activity__title has-heading-5-font-size"><a href="%1$s">%2$s</a></h3>',
+			esc_url( $url ),
+			esc_html( (string) $item['title'] )
+		);
+	}
+
+	// The content is the team blog's own rendered HTML, served on the same origin, so it is output as the blog itself would.
 	return sprintf(
 		'<li class="wp-block-wporg-make-latest-activity__item %1$s">
-			<img class="wp-block-wporg-make-latest-activity__avatar" src="%2$s" alt="" width="32" height="32" loading="lazy" />
-			<div class="wp-block-wporg-make-latest-activity__body">
-				<p class="wp-block-wporg-make-latest-activity__summary">%3$s</p>
-				<p class="wp-block-wporg-make-latest-activity__excerpt">%4$s</p>
-				<p class="wp-block-wporg-make-latest-activity__meta">%5$s · %6$s</p>
-			</div>
+			<article>
+				<header class="wp-block-wporg-make-latest-activity__header">
+					<img class="wp-block-wporg-make-latest-activity__avatar" src="%2$s" alt="" width="40" height="40" loading="lazy" />
+					<p class="wp-block-wporg-make-latest-activity__byline"><span>%3$s</span><span class="wp-block-wporg-make-latest-activity__meta">%4$s · %5$s</span></p>
+				</header>
+				%6$s
+				<div class="wp-block-wporg-make-latest-activity__content">%7$s</div>
+			</article>
 		</li>',
 		esc_attr( 'is-type-' . $item['type'] . ' make-' . $item['team']['slug'] ),
-		esc_url( (string) get_avatar_url( $user->ID, array( 'size' => 64 ) ) ),
-		$summary,
-		esc_html( (string) $item['excerpt'] ),
+		esc_url( (string) get_avatar_url( $user->ID, array( 'size' => 80 ) ) ),
+		$author,
 		$team,
-		$time
+		$time,
+		$title,
+		$item['content']
 	);
 }

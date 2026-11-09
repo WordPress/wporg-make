@@ -349,7 +349,7 @@ function load_items( int $blog_id, array $post_ids, array $comment_ids ): array 
 				'user_id'  => (int) $post->post_author,
 				'date_gmt' => $post->post_date_gmt,
 				'title'    => get_title( $post ),
-				'excerpt'  => get_excerpt( '' !== $post->post_excerpt ? $post->post_excerpt : $post->post_content, 30 ),
+				'content'  => get_post_html( $post->post_content ),
 				'url'      => $url,
 			);
 		}
@@ -379,7 +379,7 @@ function load_items( int $blog_id, array $post_ids, array $comment_ids ): array 
 				'user_id'  => (int) $comment->user_id,
 				'date_gmt' => $comment->comment_date_gmt,
 				'title'    => get_title( $post ),
-				'excerpt'  => get_excerpt( $comment->comment_content, 20 ),
+				'content'  => get_comment_html( $comment->comment_content ),
 				'url'      => $url . '#comment-' . $comment->comment_ID,
 			);
 		}
@@ -405,20 +405,56 @@ function get_title( WP_Post $post ): string {
 }
 
 /**
- * Returns a plain-text excerpt of post or comment content.
- *
- * The content filters are not run: in a switched context they are the root
- * site's, not the team blog's.
+ * Returns a plain-text excerpt of content, for titles that are empty.
  *
  * @param string $content Raw content.
  * @param int    $words   Maximum number of words.
  * @return string Excerpt.
  */
 function get_excerpt( string $content, int $words ): string {
-	$content = strip_shortcodes( excerpt_remove_blocks( $content ) );
+	return trim( wp_trim_words( strip_shortcode_tags( excerpt_remove_blocks( $content ) ), $words ) );
+}
 
-	// Shortcodes registered only on the team blog are unknown here, so strip any tags left behind.
-	$content = (string) preg_replace( '/\[\/?[a-z][\w-]*(?:\s[^\]]*)?\]/i', '', $content );
+/**
+ * Renders post content for display, the way `the_content` would on the team blog.
+ *
+ * The `the_content` filters themselves are not run: in a switched context they
+ * are the root site's, and some of them (oEmbed, for one) would write caches
+ * keyed to the wrong blog's posts. Blocks render in the team blog's context.
+ *
+ * @param string $content Raw post content.
+ * @return string Post HTML.
+ */
+function get_post_html( string $content ): string {
+	$has_blocks = has_blocks( $content );
+	$content    = wptexturize( do_blocks( $content ) );
 
-	return trim( wp_trim_words( $content, $words ) );
+	if ( ! $has_blocks ) {
+		$content = wpautop( $content );
+	}
+
+	return wp_filter_content_tags( strip_shortcode_tags( shortcode_unautop( $content ) ) );
+}
+
+/**
+ * Renders comment content for display, the way `comment_text` would.
+ *
+ * @param string $content Raw comment content.
+ * @return string Comment HTML.
+ */
+function get_comment_html( string $content ): string {
+	return wpautop( make_clickable( wptexturize( $content ) ) );
+}
+
+/**
+ * Removes shortcode tags but keeps what they enclose.
+ *
+ * Shortcodes are not run: most of a team blog's are not registered on the
+ * root, and running the root's own in a switched context is unsafe.
+ *
+ * @param string $content Content.
+ * @return string Content without shortcode tags.
+ */
+function strip_shortcode_tags( string $content ): string {
+	return (string) preg_replace( '/\[\/?[a-z][\w-]*(?:\s[^\]]*)?\]/i', '', $content );
 }
