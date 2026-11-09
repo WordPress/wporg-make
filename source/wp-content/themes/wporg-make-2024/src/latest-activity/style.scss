@@ -386,12 +386,10 @@ $o2-meta-color: #23282d;
 
 	&__pagination {
 		display: flex;
-		gap: var(--wp--preset--spacing--20);
+		justify-content: center;
 	}
 
 	&__more {
-		margin-inline-start: auto;
-
 		&.is-loading {
 			opacity: 0.6;
 			pointer-events: none;

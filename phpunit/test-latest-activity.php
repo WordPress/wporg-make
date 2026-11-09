@@ -301,7 +301,6 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 		$html = render();
 
 		$this->assertSame( 20, substr_count( $html, '<article class="wp-block-wporg-make-latest-activity__item ' ) );
-		$this->assertStringNotContainsString( '__newer', $html );
 		$this->assertStringContainsString( 'href="' . esc_url( home_url( '/?activity-page=3#latest-activity' ) ) . '"', $html );
 		$this->assertStringContainsString(
 			wp_interactivity_data_wp_context(

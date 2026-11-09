@@ -435,13 +435,6 @@ function render_page( int $from, int $page, bool $has_older, bool $failed, array
 	}
 
 	$links = '';
-	if ( $from > 1 ) {
-		$links .= sprintf(
-			'<a class="wp-block-wporg-make-latest-activity__newer" href="%1$s">%2$s</a>',
-			esc_url( get_page_url( $from - 1 ) ),
-			esc_html__( '← Newer', 'wporg' )
-		);
-	}
 	if ( $has_older ) {
 		// Without JavaScript this opens the next page; with it, the router swaps in this range extended by that page.
 		$range = add_query_arg(
