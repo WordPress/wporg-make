@@ -2,8 +2,8 @@
 /**
  * Block: Latest activity.
  *
- * Shows the newest posts and comments from the Make team blogs, with Newer
- * and Older links over up to MAX_PAGES pages.
+ * Shows the newest posts from the Make team blogs the way o2 does, each with
+ * its comments, with Newer and Older links over up to MAX_PAGES pages.
  *
  * @package WordPressdotorg\Theme\Make_2024
  */
@@ -30,6 +30,20 @@ const QUERY_ARG = 'activity-page';
  * @var string
  */
 const ANCHOR = 'latest-activity';
+
+/**
+ * Interactivity API store namespace.
+ *
+ * @var string
+ */
+const STORE = 'wporg-make/latest-activity';
+
+/**
+ * Deepest level comments are nested to, as on o2. Deeper replies continue at this level.
+ *
+ * @var int
+ */
+const COMMENT_DEPTH = 10;
 
 add_action( 'init', __NAMESPACE__ . '\init' );
 add_action( 'template_redirect', __NAMESPACE__ . '\maybe_redirect' );
@@ -163,7 +177,12 @@ function render(): string {
 	$result = get_activity_page( $page );
 	$items  = get_items( $result['rows'], get_allowed_sites() );
 
-	$wrapper_attributes = get_block_wrapper_attributes( array( 'id' => ANCHOR ) );
+	$wrapper_attributes = get_block_wrapper_attributes(
+		array(
+			'id'                  => ANCHOR,
+			'data-wp-interactive' => STORE,
+		)
+	);
 
 	if ( ! $items ) {
 		return sprintf(
@@ -177,7 +196,7 @@ function render(): string {
 
 	$list = '';
 	foreach ( $items as $item ) {
-		$list .= render_item( $item );
+		$list .= render_post( $item );
 	}
 
 	$links = '';
@@ -214,7 +233,7 @@ function render(): string {
 	}
 
 	return sprintf(
-		'<div %1$s><ol class="wp-block-wporg-make-latest-activity__list">%2$s</ol>%3$s%4$s</div>',
+		'<div %1$s><div class="wp-block-wporg-make-latest-activity__list">%2$s</div>%3$s%4$s</div>',
 		$wrapper_attributes,
 		$list,
 		$navigation,
@@ -223,80 +242,226 @@ function render(): string {
 }
 
 /**
- * Renders one post or comment.
+ * Renders one post the way o2 does: byline, title, content, actions and comments.
  *
- * Posts look the way they do on an o2 blog: a byline, the title and the full
- * content. Comments are shown on their own, so their byline names the post.
+ * Reply and Follow link to the post on its team blog, where both work.
  *
- * @param array<string, mixed> $item Item from get_items().
- * @return string List item markup.
+ * @param array<string, mixed> $item Post from get_items().
+ * @return string Post markup.
  */
-function render_item( array $item ): string {
+function render_post( array $item ): string {
 	$user = get_userdata( (int) $item['user_id'] );
 	if ( ! $user ) {
 		return '';
 	}
 
-	$url    = (string) $item['url'];
-	$author = sprintf(
-		'<a class="wp-block-wporg-make-latest-activity__author" href="%1$s">%2$s</a>',
-		esc_url( 'https://profiles.wordpress.org/' . $user->user_nicename . '/' ),
-		esc_html( $user->display_name )
-	);
+	$url     = (string) $item['url'];
+	$profile = get_profile_url( $user );
+	$count   = count( $item['comments'] );
 
-	$is_comment = 'comment' === $item['type'];
-	if ( $is_comment ) {
-		$author = sprintf(
-			/* translators: 1: Linked author name. 2: Linked post title. */
-			__( '%1$s commented on %2$s', 'wporg' ),
-			$author,
-			sprintf( '<a href="%1$s">%2$s</a>', esc_url( $url ), esc_html( (string) $item['title'] ) )
-		);
+	$reply_count = '';
+	if ( $count ) {
+		$reply_count = sprintf( '<span class="wp-block-wporg-make-latest-activity__count">%s</span>', esc_html( number_format_i18n( $count ) ) );
 	}
 
-	$timestamp = (int) strtotime( $item['date_gmt'] . ' UTC' );
-	$time      = sprintf(
-		'<a href="%1$s"><time datetime="%2$s" title="%3$s">%4$s</time></a>',
-		esc_url( $url ),
-		esc_attr( mysql_to_rfc3339( (string) $item['date_gmt'] ) . 'Z' ),
-		esc_attr( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp ) ),
-		/* translators: %s: Human-readable time difference, such as "2 hours". */
-		esc_html( sprintf( __( '%s ago', 'wporg' ), human_time_diff( $timestamp ) ) )
-	);
-
-	$team = sprintf(
-		'<a href="%1$s">%2$s</a>',
-		esc_url( $item['team']['url'] ),
-		esc_html( $item['team']['name'] )
-	);
-
-	$title = '';
-	if ( ! $is_comment ) {
-		$title = sprintf(
-			'<h3 class="wp-block-wporg-make-latest-activity__title has-heading-5-font-size"><a href="%1$s">%2$s</a></h3>',
-			esc_url( $url ),
-			esc_html( (string) $item['title'] )
+	$comments = '';
+	if ( $count ) {
+		$comments_id = sprintf( 'latest-activity-comments-%1$s-%2$d', $item['team']['slug'], $item['id'] );
+		$comments    = sprintf(
+			'<footer class="wp-block-wporg-make-latest-activity__footer">
+				<button type="button" class="wp-block-wporg-make-latest-activity__toggle" aria-controls="%1$s" aria-expanded="true" data-wp-bind--aria-expanded="context.isOpen" data-wp-on--click="actions.toggleComments">
+					<span data-wp-bind--hidden="!context.isOpen">%2$s %3$s</span>
+					<span hidden data-wp-bind--hidden="context.isOpen">%4$s %5$s</span>
+				</button>
+			</footer>
+			<div id="%1$s" class="wp-block-wporg-make-latest-activity__comments" data-wp-bind--hidden="!context.isOpen">%6$s</div>',
+			esc_attr( $comments_id ),
+			get_icon( 'collapse' ),
+			esc_html__( 'Hide Comments', 'wporg' ),
+			get_icon( 'expand' ),
+			esc_html__( 'Show Comments', 'wporg' ),
+			render_comments( $item['comments'] )
 		);
 	}
 
 	// The content is the team blog's own rendered HTML, served on the same origin, so it is output as the blog itself would.
 	return sprintf(
-		'<li class="wp-block-wporg-make-latest-activity__item %1$s">
-			<article>
-				<header class="wp-block-wporg-make-latest-activity__header">
-					<img class="wp-block-wporg-make-latest-activity__avatar" src="%2$s" alt="" width="40" height="40" loading="lazy" />
-					<p class="wp-block-wporg-make-latest-activity__byline"><span>%3$s</span><span class="wp-block-wporg-make-latest-activity__meta">%4$s · %5$s</span></p>
-				</header>
-				%6$s
-				<div class="wp-block-wporg-make-latest-activity__content">%7$s</div>
-			</article>
-		</li>',
-		esc_attr( 'is-type-' . $item['type'] . ' make-' . $item['team']['slug'] ),
-		esc_url( (string) get_avatar_url( $user->ID, array( 'size' => 80 ) ) ),
-		$author,
-		$team,
-		$time,
-		$title,
-		$item['content']
+		'<article class="wp-block-wporg-make-latest-activity__item %1$s" %2$s>
+			<header class="wp-block-wporg-make-latest-activity__header">
+				<a class="wp-block-wporg-make-latest-activity__avatar" href="%3$s"><img src="%4$s" alt="" width="50" height="50" loading="lazy" /></a>
+				<a class="wp-block-wporg-make-latest-activity__author" href="%3$s">%5$s</a>
+				<span class="wp-block-wporg-make-latest-activity__date"><a href="%6$s">%7$s</a> · %8$s</span>
+				<h3 class="wp-block-wporg-make-latest-activity__title"><a href="%9$s">%10$s</a></h3>
+			</header>
+			<div class="wp-block-wporg-make-latest-activity__content">%11$s</div>
+			<nav class="wp-block-wporg-make-latest-activity__actions" aria-label="%12$s">
+				<a class="wp-block-wporg-make-latest-activity__button" href="%13$s">%14$s%15$s</a>
+				<a class="wp-block-wporg-make-latest-activity__button" href="%9$s">%16$s</a>
+			</nav>
+			%17$s
+		</article>',
+		esc_attr( 'make-' . $item['team']['slug'] ),
+		wp_interactivity_data_wp_context( array( 'isOpen' => true ) ),
+		esc_url( $profile ),
+		esc_url( (string) get_avatar_url( $user->ID, array( 'size' => 100 ) ) ),
+		esc_html( $user->display_name ),
+		esc_url( $item['team']['url'] ),
+		esc_html( $item['team']['name'] ),
+		render_time( $url, (string) $item['date_gmt'] ),
+		esc_url( $url ),
+		esc_html( (string) $item['title'] ),
+		$item['content'],
+		esc_attr__( 'Post actions', 'wporg' ),
+		esc_url( $url . '#respond' ),
+		esc_html__( 'Reply', 'wporg' ),
+		$reply_count,
+		esc_html__( 'Follow', 'wporg' ),
+		$comments
+	);
+}
+
+/**
+ * Renders a post's comments as threads.
+ *
+ * A reply whose parent is not shown is treated as a top-level comment.
+ *
+ * @param array<int, array<string, mixed>> $comments Comments, oldest first.
+ * @return string Comments markup.
+ */
+function render_comments( array $comments ): string {
+	$shown    = array_flip( array_column( $comments, 'id' ) );
+	$children = array();
+
+	foreach ( $comments as $comment ) {
+		$parent                = isset( $shown[ $comment['parent'] ] ) ? $comment['parent'] : 0;
+		$children[ $parent ][] = $comment;
+	}
+
+	return render_comment_level( $children, 0, 1 );
+}
+
+/**
+ * Renders the replies to one comment, or the top-level comments.
+ *
+ * @param array<int, array<int, array<string, mixed>>> $children  Comments grouped by parent ID.
+ * @param int                                          $parent_id Parent comment ID, 0 for top-level.
+ * @param int                                          $depth     Depth of the comments being rendered.
+ * @return string Comments markup.
+ */
+function render_comment_level( array $children, int $parent_id, int $depth ): string {
+	$html = '';
+
+	foreach ( $children[ $parent_id ] ?? array() as $comment ) {
+		if ( $depth < COMMENT_DEPTH ) {
+			$html .= render_comment( $comment, render_comment_level( $children, $comment['id'], $depth + 1 ) );
+		} else {
+			$html .= render_comment( $comment, '' ) . render_comment_level( $children, $comment['id'], $depth );
+		}
+	}
+
+	return $html;
+}
+
+/**
+ * Renders one comment the way o2 does. Its Reply link points to the comment on the team blog.
+ *
+ * @param array<string, mixed> $comment Comment from get_post_comments().
+ * @param string               $replies Rendered replies, nested under the comment.
+ * @return string Comment markup.
+ */
+function render_comment( array $comment, string $replies ): string {
+	$user = get_userdata( (int) $comment['user_id'] );
+	if ( ! $user ) {
+		return $replies;
+	}
+
+	$url = (string) $comment['url'];
+
+	if ( $replies ) {
+		$replies = '<div class="wp-block-wporg-make-latest-activity__children">' . $replies . '</div>';
+	}
+
+	return sprintf(
+		'<article class="wp-block-wporg-make-latest-activity__comment">
+			<header class="wp-block-wporg-make-latest-activity__comment-header">
+				<img class="wp-block-wporg-make-latest-activity__comment-avatar" src="%1$s" alt="" width="32" height="32" loading="lazy" />
+				<p class="wp-block-wporg-make-latest-activity__comment-meta"><a class="wp-block-wporg-make-latest-activity__comment-author" href="%2$s">%3$s</a> %4$s</p>
+			</header>
+			<div class="wp-block-wporg-make-latest-activity__comment-content">
+				%5$s
+				<p class="wp-block-wporg-make-latest-activity__comment-actions"><a class="wp-block-wporg-make-latest-activity__comment-reply" href="%6$s">%7$s%8$s</a></p>
+			</div>
+			%9$s
+		</article>',
+		esc_url( (string) get_avatar_url( $user->ID, array( 'size' => 64 ) ) ),
+		esc_url( get_profile_url( $user ) ),
+		esc_html( $user->display_name ),
+		render_time( $url, (string) $comment['date_gmt'] ),
+		$comment['content'],
+		esc_url( $url ),
+		get_icon( 'reply' ),
+		esc_html__( 'Reply', 'wporg' ),
+		$replies
+	);
+}
+
+/**
+ * Returns a user's WordPress.org profile URL.
+ *
+ * @param \WP_User $user User.
+ * @return string Profile URL.
+ */
+function get_profile_url( \WP_User $user ): string {
+	return 'https://profiles.wordpress.org/' . $user->user_nicename . '/';
+}
+
+/**
+ * Renders a linked timestamp in o2's style: "2 hours ago", "Yesterday at 2:33 pm" or "9:22 pm on November 4, 2026".
+ *
+ * @param string $url      Link target.
+ * @param string $date_gmt Date in GMT, as stored.
+ * @return string Timestamp markup.
+ */
+function render_time( string $url, string $date_gmt ): string {
+	$timestamp   = (int) strtotime( $date_gmt . ' UTC' );
+	$time_format = (string) get_option( 'time_format' );
+	$day         = wp_date( 'Y-m-d', $timestamp );
+
+	if ( wp_date( 'Y-m-d' ) === $day ) {
+		/* translators: %s: Human-readable time difference, such as "2 hours". */
+		$text = sprintf( __( '%s ago', 'wporg' ), human_time_diff( $timestamp ) );
+	} elseif ( wp_date( 'Y-m-d', time() - DAY_IN_SECONDS ) === $day ) {
+		/* translators: %s: Time of day. */
+		$text = sprintf( __( 'Yesterday at %s', 'wporg' ), wp_date( $time_format, $timestamp ) );
+	} else {
+		/* translators: 1: Time of day. 2: Date. */
+		$text = sprintf( __( '%1$s on %2$s', 'wporg' ), wp_date( $time_format, $timestamp ), wp_date( (string) get_option( 'date_format' ), $timestamp ) );
+	}
+
+	return sprintf(
+		'<a class="wp-block-wporg-make-latest-activity__time" href="%1$s"><time datetime="%2$s">%3$s</time></a>',
+		esc_url( $url ),
+		esc_attr( mysql_to_rfc3339( $date_gmt ) . 'Z' ),
+		esc_html( $text )
+	);
+}
+
+/**
+ * Returns a Genericons icon as inline SVG, so the icon font does not have to be loaded.
+ *
+ * @param string $name Icon name: reply, expand or collapse.
+ * @return string SVG markup.
+ */
+function get_icon( string $name ): string {
+	$paths = array(
+		'reply'    => 'M1920 832l-640 -640v448h-1024v704l384 384v-704h640v448z',
+		'expand'   => 'M1408 1280l128 -128l-576 -576l-576 576l128 128l448 -448z',
+		'collapse' => 'M1408 640l-448 448l-448 -448l-128 128l576 576l576 -576z',
+	);
+
+	// Font glyphs have their y-axis pointing up, so they are flipped into SVG coordinates.
+	return sprintf(
+		'<svg class="wp-block-wporg-make-latest-activity__icon" viewBox="0 0 2048 2048" width="16" height="16" aria-hidden="true" focusable="false"><path transform="matrix(1 0 0 -1 0 2048)" d="%s" /></svg>',
+		esc_attr( $paths[ $name ] )
 	);
 }

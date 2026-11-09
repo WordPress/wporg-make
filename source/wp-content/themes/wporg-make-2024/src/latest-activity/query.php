@@ -2,8 +2,8 @@
 /**
  * Data access for the Latest activity block.
  *
- * Reads the newest posts and comments from every allowed team blog on the
- * network in a single query.
+ * Reads the newest posts from every allowed team blog on the network in a
+ * single query, then loads each post's comments.
  *
  * @package WordPressdotorg\Theme\Make_2024
  */
@@ -15,7 +15,7 @@ namespace WordPressdotorg\Theme\Make_2024\Latest_Activity;
 use WP_Post;
 
 /**
- * Items shown per page.
+ * Posts shown per page.
  *
  * @var int
  */
@@ -160,7 +160,7 @@ function is_members_only( int $blog_id ): bool {
  * share one query. A failed query is not kept.
  *
  * @param int $page Page number, 1 to MAX_PAGES.
- * @return array{rows: array<int, array{blog_id: int, type: string, object_id: int, date_gmt: string}>, has_older: bool, failed: bool} The page's rows, whether an older page exists, and whether the query failed.
+ * @return array{rows: array<int, array{blog_id: int, post_id: int, date_gmt: string}>, has_older: bool, failed: bool} The page's rows, whether an older page exists, and whether the query failed.
  */
 function get_activity_page( int $page ): array {
 	wp_cache_add_non_persistent_groups( REQUEST_CACHE_GROUP );
@@ -191,16 +191,16 @@ function get_activity_page( int $page ): array {
 }
 
 /**
- * Queries one page of activity rows across the given blogs.
+ * Queries one page of posts across the given blogs, newest first.
  *
- * Each blog contributes two branches, posts and comments, which are combined
- * with UNION ALL and sorted once. Each branch returns as many rows as the page
- * reaches into, so no blog can come up short. One extra row tells whether an
- * older page exists.
+ * Each blog contributes one branch; the branches are combined with UNION ALL
+ * and sorted once. Each branch returns as many rows as the page reaches into,
+ * so no blog can come up short. One extra row tells whether an older page
+ * exists.
  *
  * @param int[] $blog_ids Blog IDs to read.
  * @param int   $page     Page number.
- * @return array<int, array{blog_id: int, type: string, object_id: int, date_gmt: string}>|null Up to PER_PAGE + 1 rows, or null when the query failed.
+ * @return array<int, array{blog_id: int, post_id: int, date_gmt: string}>|null Up to PER_PAGE + 1 rows, or null when the query failed.
  */
 function query_rows( array $blog_ids, int $page ): ?array {
 	global $wpdb;
@@ -216,33 +216,19 @@ function query_rows( array $blog_ids, int $page ): ?array {
 	$args       = array();
 
 	foreach ( $blog_ids as $blog_id ) {
-		$blog_id    = (int) $blog_id;
-		$prefix     = $wpdb->get_blog_prefix( $blog_id );
-		$post_rules = get_post_rules_sql( $prefix );
+		$blog_id = (int) $blog_id;
+		$prefix  = $wpdb->get_blog_prefix( $blog_id );
 
 		// Sorting by post_date, not post_date_gmt, lets MySQL walk the type_status_date index.
-		$branches[] = "( SELECT {$blog_id} AS blog_id, 'post' AS type, p.ID AS object_id, p.post_date_gmt AS date_gmt
+		$branches[] = "( SELECT {$blog_id} AS blog_id, p.ID AS post_id, p.post_date_gmt AS date_gmt
 			FROM {$prefix}posts p
-			WHERE {$post_rules} AND " . get_active_user_sql( 'p.post_author' ) . '
+			WHERE " . get_post_rules_sql( $prefix ) . ' AND ' . get_active_user_sql( 'p.post_author' ) . '
 			ORDER BY p.post_date DESC, p.ID DESC
 			LIMIT %d )';
 		array_push( $args, $xpost_like, $limit );
-
-		$branches[] = "( SELECT {$blog_id}, 'comment', c.comment_ID, c.comment_date_gmt
-			FROM {$prefix}comments c
-			INNER JOIN {$prefix}posts p ON p.ID = c.comment_post_ID
-			WHERE c.comment_approved = '1'
-				AND c.comment_type = 'comment'
-				AND c.user_id > 0
-				AND NOT EXISTS ( SELECT 1 FROM {$prefix}commentmeta cm WHERE cm.comment_id = c.comment_ID AND cm.meta_key = 'xcomment_origin' )
-				AND " . get_active_user_sql( 'c.user_id' ) . "
-				AND {$post_rules}
-			ORDER BY c.comment_date_gmt DESC, c.comment_ID DESC
-			LIMIT %d )";
-		array_push( $args, $xpost_like, $limit );
 	}
 
-	$sql = implode( ' UNION ALL ', $branches ) . ' ORDER BY date_gmt DESC, blog_id DESC, type DESC, object_id DESC LIMIT %d OFFSET %d';
+	$sql = implode( ' UNION ALL ', $branches ) . ' ORDER BY date_gmt DESC, blog_id DESC, post_id DESC LIMIT %d OFFSET %d';
 	array_push( $args, PER_PAGE + 1, $offset );
 
 	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery -- Table names come from get_blog_prefix() for integer blog IDs; every value is a placeholder.
@@ -254,10 +240,9 @@ function query_rows( array $blog_ids, int $page ): ?array {
 
 	return array_map(
 		static fn( array $row ): array => array(
-			'blog_id'   => (int) $row['blog_id'],
-			'type'      => (string) $row['type'],
-			'object_id' => (int) $row['object_id'],
-			'date_gmt'  => (string) $row['date_gmt'],
+			'blog_id'  => (int) $row['blog_id'],
+			'post_id'  => (int) $row['post_id'],
+			'date_gmt' => (string) $row['date_gmt'],
 		),
 		$results
 	);
@@ -293,27 +278,27 @@ function get_active_user_sql( string $column ): string {
 }
 
 /**
- * Loads display data for activity rows, switching into each blog once.
+ * Loads posts and their comments for display, switching into each blog once.
  *
- * Rows whose post or comment can no longer be loaded are left out.
+ * Rows whose post can no longer be loaded are left out.
  *
- * @param array<int, array{blog_id: int, type: string, object_id: int, date_gmt: string}> $rows  Activity rows.
- * @param array<int, array{slug: string, name: string, url: string}>                      $sites Allowed blogs.
- * @return array<int, array<string, mixed>> Items in row order.
+ * @param array<int, array{blog_id: int, post_id: int, date_gmt: string}> $rows  Post rows.
+ * @param array<int, array{slug: string, name: string, url: string}>      $sites Allowed blogs.
+ * @return array<int, array<string, mixed>> Posts in row order.
  */
 function get_items( array $rows, array $sites ): array {
 	$ids = array();
 	foreach ( $rows as $row ) {
-		$ids[ $row['blog_id'] ][ $row['type'] ][] = $row['object_id'];
+		$ids[ $row['blog_id'] ][] = $row['post_id'];
 	}
 
 	$loaded = array();
-	foreach ( $ids as $blog_id => $blog_ids ) {
+	foreach ( $ids as $blog_id => $post_ids ) {
 		switch_to_blog( $blog_id );
 
 		// finally guarantees the restore; an unrestored switch leaks into the rest of the page.
 		try {
-			$loaded += load_items( $blog_id, $blog_ids['post'] ?? array(), $blog_ids['comment'] ?? array() );
+			$loaded += load_posts( $blog_id, $post_ids );
 		} finally {
 			restore_current_blog();
 		}
@@ -321,7 +306,7 @@ function get_items( array $rows, array $sites ): array {
 
 	$items = array();
 	foreach ( $rows as $row ) {
-		$key = "{$row['blog_id']}:{$row['type']}:{$row['object_id']}";
+		$key = "{$row['blog_id']}:{$row['post_id']}";
 		if ( isset( $loaded[ $key ], $sites[ $row['blog_id'] ] ) ) {
 			$items[] = $loaded[ $key ] + array( 'team' => $sites[ $row['blog_id'] ] );
 		}
@@ -331,74 +316,99 @@ function get_items( array $rows, array $sites ): array {
 }
 
 /**
- * Loads posts and comments from the current blog.
+ * Loads posts and their comments from the current blog.
  *
- * @param int   $blog_id     Current blog ID, used in the keys.
- * @param int[] $post_ids    Post IDs.
- * @param int[] $comment_ids Comment IDs.
- * @return array<string, array<string, mixed>> Items keyed by "blog:type:id".
+ * @param int   $blog_id  Current blog ID, used in the keys.
+ * @param int[] $post_ids Post IDs.
+ * @return array<string, array<string, mixed>> Posts keyed by "blog:id".
  */
-function load_items( int $blog_id, array $post_ids, array $comment_ids ): array {
-	$items = array();
+function load_posts( int $blog_id, array $post_ids ): array {
+	$posts = get_posts(
+		array(
+			'include'     => $post_ids,
+			'post_type'   => 'post',
+			'post_status' => 'publish',
+			'numberposts' => count( $post_ids ),
+		)
+	);
 
-	if ( $post_ids ) {
-		$posts = get_posts(
-			array(
-				'include'     => $post_ids,
-				'post_type'   => 'post',
-				'post_status' => 'publish',
-				'numberposts' => count( $post_ids ),
-			)
-		);
+	$comments = get_post_comments( $post_ids );
+	$items    = array();
 
-		foreach ( $posts as $post ) {
-			$url = get_permalink( $post );
-			if ( ! $url ) {
-				continue;
-			}
-
-			$items[ "{$blog_id}:post:{$post->ID}" ] = array(
-				'type'     => 'post',
-				'user_id'  => (int) $post->post_author,
-				'date_gmt' => $post->post_date_gmt,
-				'title'    => get_title( $post ),
-				'content'  => get_post_html( $post->post_content ),
-				'url'      => $url,
-			);
+	foreach ( $posts as $post ) {
+		$url = get_permalink( $post );
+		if ( ! $url ) {
+			continue;
 		}
-	}
 
-	if ( $comment_ids ) {
-		$comments = get_comments(
-			array(
-				'comment__in'               => $comment_ids,
-				'status'                    => 'approve',
-				'type'                      => 'comment',
-				'number'                    => count( $comment_ids ),
-				'update_comment_post_cache' => true,
-			)
-		);
-
-		foreach ( $comments as $comment ) {
-			$post = get_post( (int) $comment->comment_post_ID );
-			$url  = $post ? get_permalink( $post ) : false;
-			if ( ! $url ) {
-				continue;
-			}
-
+		$post_comments = $comments[ $post->ID ] ?? array();
+		foreach ( $post_comments as &$comment ) {
 			// Built by hand: get_comment_link() would read comment paging options that o2 overrides only on its own blogs.
-			$items[ "{$blog_id}:comment:{$comment->comment_ID}" ] = array(
-				'type'     => 'comment',
-				'user_id'  => (int) $comment->user_id,
-				'date_gmt' => $comment->comment_date_gmt,
-				'title'    => get_title( $post ),
-				'content'  => get_comment_html( $comment->comment_content ),
-				'url'      => $url . '#comment-' . $comment->comment_ID,
-			);
+			$comment['url'] = $url . '#comment-' . $comment['id'];
 		}
+		unset( $comment );
+
+		$items[ "{$blog_id}:{$post->ID}" ] = array(
+			'id'       => $post->ID,
+			'user_id'  => (int) $post->post_author,
+			'date_gmt' => $post->post_date_gmt,
+			'title'    => get_title( $post ),
+			'content'  => get_post_html( $post->post_content ),
+			'url'      => $url,
+			'comments' => $post_comments,
+		);
 	}
 
 	return $items;
+}
+
+/**
+ * Loads the comments that may be shown on the given posts of the current blog, oldest first.
+ *
+ * Only approved comments by logged-in users in good standing count, and o2
+ * xcomments (copies of a comment made elsewhere) are left out.
+ *
+ * @param int[] $post_ids Post IDs.
+ * @return array<int, array<int, array<string, mixed>>> Comments grouped by post ID.
+ */
+function get_post_comments( array $post_ids ): array {
+	$comments = get_comments(
+		array(
+			'post__in'   => $post_ids,
+			'status'     => 'approve',
+			'type'       => 'comment',
+			'orderby'    => array(
+				'comment_date_gmt' => 'ASC',
+				'comment_ID'       => 'ASC',
+			),
+			'meta_query' => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Bounded by one page of posts.
+				array(
+					'key'     => 'xcomment_origin',
+					'compare' => 'NOT EXISTS',
+				),
+			),
+		)
+	);
+
+	cache_users( array_unique( array_map( static fn( $comment ): int => (int) $comment->user_id, $comments ) ) );
+
+	$grouped = array();
+	foreach ( $comments as $comment ) {
+		$user = get_userdata( (int) $comment->user_id );
+		if ( ! $user || ! empty( $user->spam ) || ! empty( $user->deleted ) ) {
+			continue;
+		}
+
+		$grouped[ (int) $comment->comment_post_ID ][] = array(
+			'id'       => (int) $comment->comment_ID,
+			'parent'   => (int) $comment->comment_parent,
+			'user_id'  => (int) $comment->user_id,
+			'date_gmt' => $comment->comment_date_gmt,
+			'content'  => get_comment_html( $comment->comment_content ),
+		);
+	}
+
+	return $grouped;
 }
 
 /**

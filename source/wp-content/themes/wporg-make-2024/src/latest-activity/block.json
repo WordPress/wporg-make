@@ -6,16 +6,18 @@
 	"title": "Latest activity",
 	"category": "widgets",
 	"icon": "list-view",
-	"description": "Show the newest posts and comments from the Make team blogs.",
+	"description": "Show the newest posts from the Make team blogs, with their comments.",
 	"attributes": {},
 	"supports": {
 		"align": [ "wide" ],
 		"html": false,
+		"interactivity": true,
 		"spacing": {
 			"margin": [ "top", "bottom" ]
 		}
 	},
 	"textdomain": "wporg",
 	"editorScript": "file:./index.js",
+	"viewScriptModule": "file:./view.js",
 	"style": "file:./style-index.css"
 }

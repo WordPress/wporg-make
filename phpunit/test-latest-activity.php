@@ -9,11 +9,12 @@ declare( strict_types = 1 );
 
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_activity_page;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_allowed_sites;
+use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_items;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_redirect_url;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\render;
 
 /**
- * Covers which blogs and items appear, paging across blogs, and the rendered markup.
+ * Covers which blogs, posts and comments appear, paging across blogs, and the rendered markup.
  *
  * @group latest-activity
  */
@@ -136,7 +137,8 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	 * @param string $kind Kind of ineligible content to create.
 	 */
 	public function test_excludes_ineligible_content( string $kind ): void {
-		$control = $this->create_post( self::$core );
+		$control         = $this->create_post( self::$core );
+		$control_comment = $this->create_comment( self::$core, $control );
 
 		switch ( $kind ) {
 			case 'private post':
@@ -177,16 +179,24 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 				$ineligible = 'comment:' . $comment_id;
 				break;
 
-			case 'comment on a private post':
-				$private    = $this->create_post( self::$core, array( 'post_status' => 'private' ) );
-				$ineligible = 'comment:' . $this->create_comment( self::$core, $private );
+			case 'comment by a spam author':
+				$spammer = self::factory()->user->create();
+				$this->mark_user_as_spam( $spammer );
+				$ineligible = 'comment:' . $this->create_comment( self::$core, $control, array( 'user_id' => $spammer ) );
 				break;
 		}
 
-		$keys = $this->get_keys( get_activity_page( 1 )['rows'] );
+		$shown = array();
+		foreach ( get_items( get_activity_page( 1 )['rows'], get_allowed_sites() ) as $item ) {
+			$shown[] = 'post:' . $item['id'];
+			foreach ( $item['comments'] as $comment ) {
+				$shown[] = 'comment:' . $comment['id'];
+			}
+		}
 
-		$this->assertContains( self::$core . ':post:' . $control, $keys );
-		$this->assertNotContains( self::$core . ':' . $ineligible, $keys );
+		$this->assertContains( 'post:' . $control, $shown );
+		$this->assertContains( 'comment:' . $control_comment, $shown );
+		$this->assertNotContains( $ineligible, $shown );
 	}
 
 	/**
@@ -196,19 +206,19 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	 */
 	public function data_ineligible_content(): array {
 		return array(
-			'private post'              => array( 'private post' ),
-			'password-protected post'   => array( 'password-protected post' ),
-			'xpost'                     => array( 'xpost' ),
-			'post by a spam author'     => array( 'post by a spam author' ),
-			'unapproved comment'        => array( 'unapproved comment' ),
-			'pingback'                  => array( 'pingback' ),
-			'xcomment'                  => array( 'xcomment' ),
-			'comment on a private post' => array( 'comment on a private post' ),
+			'private post'             => array( 'private post' ),
+			'password-protected post'  => array( 'password-protected post' ),
+			'xpost'                    => array( 'xpost' ),
+			'post by a spam author'    => array( 'post by a spam author' ),
+			'unapproved comment'       => array( 'unapproved comment' ),
+			'pingback'                 => array( 'pingback' ),
+			'xcomment'                 => array( 'xcomment' ),
+			'comment by a spam author' => array( 'comment by a spam author' ),
 		);
 	}
 
 	/**
-	 * Consecutive pages cover every item exactly once, in date order, even when one blog is much busier.
+	 * Consecutive pages cover every post exactly once, in date order, even when one blog is much busier.
 	 *
 	 * If a branch returned only one page's worth of rows instead of offset plus a page, page 2 would
 	 * lose the busy blog's older posts.
@@ -217,20 +227,16 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 		$now      = time();
 		$expected = array();
 
+		$newest     = $this->create_post( self::$design, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', $now - 30 * MINUTE_IN_SECONDS ) ) );
 		$quiet_post = $this->create_post( self::$design, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', $now - 40 * HOUR_IN_SECONDS ) ) );
-		$comment    = $this->create_comment(
-			self::$design,
-			$quiet_post,
-			array( 'comment_date_gmt' => gmdate( 'Y-m-d H:i:s', $now - 30 * MINUTE_IN_SECONDS ) )
-		);
-		$expected[] = self::$design . ':comment:' . $comment;
+		$expected[] = self::$design . ':' . $newest;
 
 		for ( $hours = 1; $hours <= 30; $hours++ ) {
 			$post_id    = $this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', $now - $hours * HOUR_IN_SECONDS ) ) );
-			$expected[] = self::$core . ':post:' . $post_id;
+			$expected[] = self::$core . ':' . $post_id;
 		}
 
-		$expected[] = self::$design . ':post:' . $quiet_post;
+		$expected[] = self::$design . ':' . $quiet_post;
 
 		$first  = get_activity_page( 1 );
 		$second = get_activity_page( 2 );
@@ -285,7 +291,8 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Posts render their content as the team blog would, titles are escaped, and comments link to their anchor.
+	 * Posts render their content as the team blog would, titles are escaped, and replies nest under their
+	 * comment with a Reply link to that reply on the team blog.
 	 *
 	 * Team-blog shortcodes are unknown on the root, so their tags go while what they enclose stays.
 	 */
@@ -298,13 +305,16 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 			)
 		);
 		$comment_id = $this->create_comment( self::$core, $post_id );
+		$reply_id   = $this->create_comment( self::$core, $post_id, array( 'comment_parent' => $comment_id ) );
 
 		$this->go_to( home_url( '/' ) );
 		$html = render();
 
+		$reply_link = preg_quote( esc_url( get_blog_permalink( self::$core, $post_id ) . '#comment-' . $reply_id ), '/' );
+
 		$this->assertStringNotContainsString( '<script>', $html );
 		$this->assertStringContainsString( '>Release notes are up.</p>', $html );
-		$this->assertStringContainsString( esc_url( get_blog_permalink( self::$core, $post_id ) . '#comment-' . $comment_id ), $html );
+		$this->assertMatchesRegularExpression( '/__children">.*__comment-reply" href="' . $reply_link . '"/s', $html );
 	}
 
 	/**
@@ -363,14 +373,14 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Turns activity rows into "blog:type:id" keys.
+	 * Turns post rows into "blog:id" keys.
 	 *
-	 * @param array<int, array<string, mixed>> $rows Activity rows.
+	 * @param array<int, array<string, mixed>> $rows Post rows.
 	 * @return string[] Keys in row order.
 	 */
 	private function get_keys( array $rows ): array {
 		return array_map(
-			static fn( array $row ): string => "{$row['blog_id']}:{$row['type']}:{$row['object_id']}",
+			static fn( array $row ): string => "{$row['blog_id']}:{$row['post_id']}",
 			$rows
 		);
 	}
