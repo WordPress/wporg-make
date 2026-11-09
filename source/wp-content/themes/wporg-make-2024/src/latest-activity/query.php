@@ -498,12 +498,25 @@ function fetch_rendered_content( array $loaded, array $sites ): array {
 		list( $type, $blog_id ) = explode( ':', (string) $key );
 		foreach ( $data as $row ) {
 			if ( isset( $row['id'], $row['content']['rendered'] ) && is_string( $row['content']['rendered'] ) ) {
-				$rendered[ $type ][ $blog_id . ':' . (int) $row['id'] ] = $row['content']['rendered'];
+				$rendered[ $type ][ $blog_id . ':' . (int) $row['id'] ] = remove_o2_post_actions( $row['content']['rendered'] );
 			}
 		}
 	}
 
 	return $rendered;
+}
+
+/**
+ * Removes o2's action bar from a team blog's rendered post.
+ *
+ * The o2 plugin appends it to the content, and the REST request is anonymous, so it always reads
+ * "Login to Reply". The list renders its own Reply and Follow buttons for the viewer.
+ *
+ * @param string $html Rendered post HTML.
+ * @return string HTML without o2's action bar.
+ */
+function remove_o2_post_actions( string $html ): string {
+	return (string) preg_replace( '#<nav class="o2-post-footer-actions">.*?</nav>#s', '', $html );
 }
 
 /**
