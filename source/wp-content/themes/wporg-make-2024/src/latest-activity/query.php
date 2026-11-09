@@ -40,11 +40,14 @@ function get_per_page(): int {
 const CACHE_GROUP = 'wporg-make-latest-activity';
 
 /**
- * Object cache group for results kept only for the current request.
+ * How long a page's rows and rendered HTML are cached.
  *
- * @var string
+ * Logged-in contributors bypass the page cache, so without this every one of
+ * their front-page views would query every team blog.
+ *
+ * @var int
  */
-const REQUEST_CACHE_GROUP = 'wporg-make-latest-activity-request';
+const CACHE_TTL = 5 * MINUTE_IN_SECONDS;
 
 /**
  * Returns the team blogs whose activity is shown, keyed by blog ID.
@@ -158,22 +161,20 @@ function is_members_only( int $blog_id ): bool {
 /**
  * Returns one page of activity rows from the allowed blogs, newest first.
  *
- * Results are kept for the request, so the redirect check and the block
- * share one query. A failed query is not kept.
+ * Results are cached for CACHE_TTL, so the redirect check and the block share
+ * one query and later requests skip it. A failed query is not cached.
  *
  * @param int $page Page number, 1 to MAX_PAGES.
  * @return array{rows: array<int, array{blog_id: int, post_id: int, date_gmt: string}>, has_older: bool, failed: bool} The page's rows, whether an older page exists, and whether the query failed.
  */
 function get_activity_page( int $page ): array {
-	wp_cache_add_non_persistent_groups( REQUEST_CACHE_GROUP );
-
 	$blog_ids = array_keys( get_allowed_sites() );
-	$key      = $page . ':' . implode( ',', $blog_ids );
-	$result   = wp_cache_get( $key, REQUEST_CACHE_GROUP );
+	$per_page = get_per_page();
+	$key      = get_cache_key( 'rows', $page );
+	$result   = wp_cache_get( $key, CACHE_GROUP );
 
 	if ( ! is_array( $result ) ) {
-		$per_page = get_per_page();
-		$rows     = query_rows( $blog_ids, $page, $per_page );
+		$rows = query_rows( $blog_ids, $page, $per_page );
 		if ( null === $rows ) {
 			return array(
 				'rows'      => array(),
@@ -187,10 +188,30 @@ function get_activity_page( int $page ): array {
 			'has_older' => count( $rows ) > $per_page && $page < MAX_PAGES,
 			'failed'    => false,
 		);
-		wp_cache_set( $key, $result, REQUEST_CACHE_GROUP );
+		wp_cache_set( $key, $result, CACHE_GROUP, CACHE_TTL );
 	}
 
 	return $result;
+}
+
+/**
+ * Returns a cache key for one page, tied to the page size and the allowed blogs.
+ *
+ * A change to either makes a new key, so stale pages are never served after one.
+ *
+ * @param string $kind What is cached: "rows" or "html".
+ * @param int    $page Page number.
+ * @return string Cache key.
+ */
+function get_cache_key( string $kind, int $page ): string {
+	return sprintf( '%1$s:%2$d:%3$d:%4$s', $kind, $page, get_per_page(), md5( implode( ',', array_keys( get_allowed_sites() ) ) ) );
+}
+
+/**
+ * Forgets the allowed blogs, so a deleted, archived or unlisted blog drops out at once.
+ */
+function flush_allowed_sites(): void {
+	wp_cache_delete( 'allowed-sites', CACHE_GROUP );
 }
 
 /**
@@ -223,10 +244,18 @@ function query_rows( array $blog_ids, int $page, int $per_page ): ?array {
 		$blog_id = (int) $blog_id;
 		$prefix  = $wpdb->get_blog_prefix( $blog_id );
 
-		// Sorting by post_date, not post_date_gmt, lets MySQL walk the type_status_date index.
-		$branches[] = "( SELECT {$blog_id} AS blog_id, p.ID AS post_id, p.post_date_gmt AS date_gmt
-			FROM {$prefix}posts p
-			WHERE " . get_post_rules_sql( $prefix ) . ' AND ' . get_active_user_sql( 'p.post_author' ) . '
+		/*
+		 * The plan is pinned: walk this blog's type_status_date index newest first
+		 * (sorting by post_date, not post_date_gmt, is what allows that) and look up
+		 * each author by primary key. Left to cost estimates, MariaDB can turn a
+		 * users check into a join that starts from the network-wide users table.
+		 */
+		$branches[] = "( SELECT STRAIGHT_JOIN {$blog_id} AS blog_id, p.ID AS post_id, p.post_date_gmt AS date_gmt
+			FROM {$prefix}posts p FORCE INDEX (type_status_date)
+			INNER JOIN {$wpdb->users} u FORCE INDEX (PRIMARY) ON u.ID = p.post_author
+			WHERE " . get_post_rules_sql( $prefix ) . '
+				AND u.spam = 0
+				AND u.deleted = 0
 			ORDER BY p.post_date DESC, p.ID DESC
 			LIMIT %d )';
 		array_push( $args, $xpost_like, $limit );
@@ -264,21 +293,8 @@ function get_post_rules_sql( string $prefix ): string {
 	return "p.post_type = 'post'
 		AND p.post_status = 'publish'
 		AND p.post_password = ''
-		AND p.post_author > 0
 		AND p.post_name NOT LIKE %s
 		AND NOT EXISTS ( SELECT 1 FROM {$prefix}postmeta pm WHERE pm.post_id = p.ID AND pm.meta_key = '_xpost_original_permalink' )";
-}
-
-/**
- * Returns an SQL condition requiring the user in a column to exist and be in good standing.
- *
- * @param string $column Column holding the user ID.
- * @return string SQL condition.
- */
-function get_active_user_sql( string $column ): string {
-	global $wpdb;
-
-	return "EXISTS ( SELECT 1 FROM {$wpdb->users} u WHERE u.ID = {$column} AND u.spam = 0 AND u.deleted = 0 )";
 }
 
 /**
@@ -378,14 +394,15 @@ function load_posts( int $blog_id, array $post_ids ): array {
 function get_post_comments( array $post_ids ): array {
 	$comments = get_comments(
 		array(
-			'post__in'   => $post_ids,
-			'status'     => 'approve',
-			'type'       => 'comment',
-			'orderby'    => array(
+			'post__in'       => $post_ids,
+			'author__not_in' => array( 0 ),
+			'status'         => 'approve',
+			'type'           => 'comment',
+			'orderby'        => array(
 				'comment_date_gmt' => 'ASC',
 				'comment_ID'       => 'ASC',
 			),
-			'meta_query' => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Bounded by one page of posts.
+			'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Bounded by one page of posts.
 				array(
 					'key'     => 'xcomment_origin',
 					'compare' => 'NOT EXISTS',

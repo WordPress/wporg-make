@@ -48,6 +48,9 @@ const COMMENT_DEPTH = 10;
 add_action( 'init', __NAMESPACE__ . '\init' );
 add_action( 'template_redirect', __NAMESPACE__ . '\maybe_redirect' );
 add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\noindex_paged_views' );
+add_action( 'wp_delete_site', __NAMESPACE__ . '\flush_allowed_sites' );
+add_action( 'wp_update_site', __NAMESPACE__ . '\flush_allowed_sites' );
+add_action( 'save_post_make_site', __NAMESPACE__ . '\flush_allowed_sites' );
 
 /**
  * Registers the block from its built metadata.
@@ -173,9 +176,34 @@ function get_page_url( int $page ): string {
  * @return string Block markup.
  */
 function render(): string {
-	$page   = max( 1, get_requested_page() );
+	$page = max( 1, get_requested_page() );
+
+	// The markup doesn't depend on who is viewing, so one copy serves everyone.
+	$cache_key = get_cache_key( 'html', $page );
+	$html      = wp_cache_get( $cache_key, CACHE_GROUP );
+	if ( is_string( $html ) ) {
+		return $html;
+	}
+
 	$result = get_activity_page( $page );
-	$items  = get_items( $result['rows'], get_allowed_sites() );
+	$html   = render_page( $page, $result );
+
+	if ( ! $result['failed'] ) {
+		wp_cache_set( $cache_key, $html, CACHE_GROUP, CACHE_TTL );
+	}
+
+	return $html;
+}
+
+/**
+ * Renders one page of posts with its pagination.
+ *
+ * @param int                  $page   Page number.
+ * @param array<string, mixed> $result Result of get_activity_page().
+ * @return string Block markup.
+ */
+function render_page( int $page, array $result ): string {
+	$items = get_items( $result['rows'], get_allowed_sites() );
 
 	$wrapper_attributes = get_block_wrapper_attributes(
 		array(

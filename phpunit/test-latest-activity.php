@@ -130,6 +130,19 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A blog that is archived drops out at once instead of staying listed until the cache expires.
+	 *
+	 * A deleted blog would otherwise stay in the query, and its dropped tables would fail it for every blog.
+	 */
+	public function test_allowed_sites_forget_a_changed_site(): void {
+		$this->assertArrayHasKey( self::$design, get_allowed_sites() );
+
+		wp_update_site( self::$design, array( 'archived' => 1 ) );
+
+		$this->assertArrayNotHasKey( self::$design, get_allowed_sites() );
+	}
+
+	/**
 	 * Each eligibility rule keeps its kind of content out, while eligible content still shows.
 	 *
 	 * @dataProvider data_ineligible_content
