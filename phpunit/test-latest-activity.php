@@ -307,6 +307,30 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A post pushed onto the next page by one published after the first page was cached shows once in the range.
+	 */
+	public function test_range_shows_a_post_once_across_pages_cached_apart(): void {
+		update_option( 'posts_per_page', 10 );
+		for ( $i = 0; $i < 15; $i++ ) {
+			$this->create_post( self::$core, array( 'post_date' => gmdate( 'Y-m-d H:i:s', strtotime( '-1 day' ) + $i ) ) );
+		}
+
+		$this->go_to( home_url( '/' ) );
+		render();
+		$this->create_post( self::$core );
+
+		// Not go_to(), which flushes the object cache and with it the cached first page.
+		$_GET['activity-page'] = '2';
+		$_GET['activity-from'] = '1';
+		$html                  = render();
+		unset( $_GET['activity-page'], $_GET['activity-from'] );
+		preg_match_all( '/<article [^>]*data-wp-key="([^"]+)"/', $html, $keys );
+
+		$this->assertSame( 15, count( array_unique( $keys[1] ) ) );
+		$this->assertSame( array_values( array_unique( $keys[1] ) ), $keys[1] );
+	}
+
+	/**
 	 * Requests for pages that cannot be served redirect instead of being clamped, which would cache duplicates.
 	 *
 	 * Only pages that can never be served redirect permanently; browsers keep a 301.

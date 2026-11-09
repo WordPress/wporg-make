@@ -224,8 +224,13 @@ function render(): string {
 		$result    = get_activity_page( $number );
 		$failed    = $failed || $result['failed'];
 		$has_older = $result['has_older'];
-		$items     = array_merge( $items, get_page_items( $number, $result ) );
+
+		// Pages are cached separately, so a post published in between can push one onto the next page as well.
+		foreach ( get_page_items( $number, $result ) as $item ) {
+			$items[ "{$item['blog_id']}:{$item['id']}" ] ??= $item;
+		}
 	}
+	$items = array_values( $items );
 
 	enqueue_block_styles( $items );
 	enqueue_content_scripts( $items );

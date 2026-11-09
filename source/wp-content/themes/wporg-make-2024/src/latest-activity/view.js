@@ -88,8 +88,11 @@ function bindGlossary( root ) {
  * Swaps in the current range extended by the next page, through the router.
  *
  * The posts already shown are keyed, so they stay as they are. The URL is replaced
- * rather than added to history, so Back leaves the page. If the router can't load,
- * the link's own page opens instead.
+ * rather than added to history, so Back leaves the page.
+ *
+ * The range is fetched here and handed to the router, because the router reloads the
+ * whole page at that URL when it can't load one itself. If loading fails, a click opens
+ * the link's own page; automatic loading stops and shows the link instead.
  *
  * @param {HTMLAnchorElement} more      The Load more link.
  * @param {boolean}           moveFocus Whether to move focus to the first new post.
@@ -106,10 +109,22 @@ function* loadNext( more, moveFocus ) {
 	state.status = '';
 
 	try {
+		const { range } = more.dataset;
+		const response = yield fetch( range );
+		if ( ! response.ok || ! response.headers.get( 'content-type' )?.startsWith( 'text/html' ) ) {
+			throw new Error( 'Loading more posts failed.' );
+		}
+
+		const body = yield response.text();
 		const { actions: router } = yield import( '@wordpress/interactivity-router' );
-		yield router.navigate( more.dataset.range, { replace: true } );
+		yield router.navigate( range, { html: body, replace: true } );
 	} catch {
-		window.location.assign( href );
+		if ( moveFocus ) {
+			window.location.assign( href );
+		} else {
+			state.isAutomatic = false;
+		}
+
 		return false;
 	} finally {
 		state.isLoadingMore = false;
