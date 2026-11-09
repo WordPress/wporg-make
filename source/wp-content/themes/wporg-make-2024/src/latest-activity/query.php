@@ -353,7 +353,7 @@ function load_posts( int $blog_id, array $post_ids ): array {
 			'user_id'  => (int) $post->post_author,
 			'date_gmt' => $post->post_date_gmt,
 			'title'    => get_title( $post ),
-			'content'  => get_post_html( $post->post_content ),
+			'content'  => get_post_html( $post ),
 			'url'      => $url,
 			'comments' => $post_comments,
 		);
@@ -390,7 +390,7 @@ function get_post_comments( array $post_ids ): array {
 		)
 	);
 
-	cache_users( array_unique( array_map( static fn( $comment ): int => (int) $comment->user_id, $comments ) ) );
+	cache_users( array_unique( array_map( static fn( \WP_Comment $comment ): int => (int) $comment->user_id, $comments ) ) );
 
 	$grouped = array();
 	foreach ( $comments as $comment ) {
@@ -443,14 +443,21 @@ function get_excerpt( string $content, int $words ): string {
  *
  * The `the_content` filters themselves are not run: in a switched context they
  * are the root site's, and some of them (oEmbed, for one) would write caches
- * keyed to the wrong blog's posts. Blocks render in the team blog's context.
+ * keyed to the wrong blog's posts. Blocks render in the team blog's context,
+ * with the post as their postId context.
  *
- * @param string $content Raw post content.
+ * @param WP_Post $post Post from the current blog.
  * @return string Post HTML.
  */
-function get_post_html( string $content ): string {
+function get_post_html( WP_Post $post ): string {
+	$content    = $post->post_content;
 	$has_blocks = has_blocks( $content );
-	$content    = wptexturize( do_blocks( $content ) );
+	$previous   = $GLOBALS['post'] ?? null;
+
+	// render_block() takes the postId context, which footnotes need, from the global post.
+	$GLOBALS['post'] = $post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restored right after rendering.
+	$content         = wptexturize( do_blocks( $content ) );
+	$GLOBALS['post'] = $previous; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restores the root page's post.
 
 	if ( ! $has_blocks ) {
 		$content = wpautop( $content );
@@ -466,18 +473,23 @@ function get_post_html( string $content ): string {
  * @return string Comment HTML.
  */
 function get_comment_html( string $content ): string {
-	return wpautop( make_clickable( wptexturize( $content ) ) );
+	return wpautop( force_balance_tags( make_clickable( wptexturize( $content ) ) ) );
 }
 
 /**
  * Removes shortcode tags but keeps what they enclose.
  *
  * Shortcodes are not run: most of a team blog's are not registered on the
- * root, and running the root's own in a switched context is unsafe.
+ * root, and running the root's own in a switched context is unsafe. Code in
+ * `<pre>` and `<code>` is left alone, since `items[i]` there is not a shortcode.
  *
  * @param string $content Content.
  * @return string Content without shortcode tags.
  */
 function strip_shortcode_tags( string $content ): string {
-	return (string) preg_replace( '/\[\/?[a-z][\w-]*(?:\s[^\]]*)?\]/i', '', $content );
+	return (string) preg_replace_callback(
+		'#<(pre|code)\b.*?</\1>|\[/?[a-z][\w-]*(?:\s[^\]]*)?\]#is',
+		static fn( array $matches ): string => isset( $matches[1] ) ? $matches[0] : '',
+		$content
+	);
 }
