@@ -1,0 +1,35 @@
+name: Unit Tests
+
+on:
+    pull_request:
+    push:
+        branches: [ trunk ]
+    workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+    phpunit:
+        name: PHPUnit
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            - uses: actions/checkout@v4
+
+            # Installs dependencies and builds the theme; the tests register the built block.
+            - name: Setup
+              uses: WordPress/wporg-repo-tools/.github/actions/setup@trunk
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+            # The sandbox stub is mounted inside the mapped mu-plugins folder. Without its mount point,
+            # the containers race to create it on start, and the loser fails with "file exists".
+            - name: Start the WordPress environment
+              run: |
+                  touch source/wp-content/mu-plugins/0-sandbox.php
+                  yarn wp-env start
+
+            - name: Run PHP unit tests
+              run: yarn test:php

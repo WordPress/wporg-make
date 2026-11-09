@@ -1,0 +1,408 @@
+/*
+ * Mirrors how o2 (wporg-breathe-2024) styles posts and comments on the team blogs.
+ */
+
+$o2-blue: var(--wp--preset--color--blueberry-1);
+$o2-blue-dark: var(--wp--preset--color--deep-blueberry);
+$o2-meta-color: #23282d;
+
+.wp-block-wporg-make-latest-activity {
+	// Kept at single-class specificity so element rules below can override it.
+	:where(a) {
+		color: $o2-blue;
+	}
+
+	&__item {
+		margin-block-end: 40px;
+		padding-block: clamp(40px, 5vw + 10px, 60px) 20px;
+		border-top: 1px solid var(--wp--preset--color--light-grey-1);
+
+		&:first-child {
+			padding-block-start: 0;
+			border-top: 0;
+		}
+	}
+
+	&__header {
+		display: flow-root;
+		margin-block-end: 20px;
+		font-weight: 700;
+		line-height: 28px;
+	}
+
+	&__avatar {
+		float: inline-start;
+		margin-inline-end: 10px;
+
+		img {
+			display: block;
+			width: 50px;
+			height: 50px;
+			border-radius: 50%;
+		}
+	}
+
+	&__author {
+		text-decoration: none;
+	}
+
+	&__date {
+		display: block;
+		color: $o2-meta-color;
+		font-size: 12px;
+		font-weight: 300;
+		line-height: 1.2;
+
+		a {
+			color: inherit;
+			text-decoration: none;
+		}
+	}
+
+	// Outranks the parent theme's top margin on headings without a font-size class.
+	& &__header &__title {
+		clear: both;
+		margin: 30px 0 0;
+		font-size: 29px;
+		font-weight: 600;
+		line-height: 1.2;
+
+		a {
+			color: var(--wp--preset--color--charcoal-1);
+			text-decoration: none;
+
+			&:hover,
+			&:focus {
+				color: $o2-blue;
+			}
+		}
+	}
+
+	// Content styles from o2 (p2-breathe and wporg-breathe-2024), which aren't loaded on the root.
+	&__content,
+	&__comment-content {
+		overflow-wrap: anywhere;
+
+		p {
+			margin: 0 0 20px;
+		}
+
+		img,
+		video {
+			max-width: 100%;
+			height: auto;
+		}
+
+		// An iframe has no intrinsic ratio, so its height has to stay as embedded.
+		iframe {
+			max-width: 100%;
+		}
+
+		strong,
+		b {
+			font-weight: 600;
+		}
+
+		ul,
+		ol {
+			margin: 0 0 20px;
+		}
+
+		ul ul {
+			margin-inline-start: 1.2em;
+			list-style-type: disc;
+		}
+
+		figure {
+			margin: 0 0 20px;
+		}
+
+		blockquote {
+			overflow: auto;
+			margin: 0 0 1.2em;
+			padding: 1.2em 1.2em 0;
+			background: #f1f1f1;
+			color: #222;
+			font-style: italic;
+			font-weight: 300;
+
+			code {
+				background: #fafafa;
+			}
+
+			em {
+				font-style: normal;
+			}
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+
+			a {
+				text-decoration: none;
+			}
+		}
+
+		th,
+		td {
+			padding: var(--wp--preset--spacing--20);
+			border: 1px solid var(--wp--preset--color--light-grey-1);
+			font-weight: 400;
+			text-align: start;
+		}
+
+		th {
+			font-weight: 700;
+		}
+
+		thead {
+			border-bottom: 1px solid var(--wp--preset--color--charcoal-1);
+		}
+
+		a.mention {
+			font-weight: 700;
+			text-decoration: none;
+
+			&:hover {
+				text-decoration: underline;
+			}
+		}
+
+		a.tag,
+		a.po-xpost {
+			text-decoration: none;
+
+			&:hover {
+				text-decoration: underline;
+			}
+		}
+	}
+
+	// Outrank the parent theme's heading margins and the root's `.entry-content code` rules.
+	& &__item &__content,
+	& &__item &__comment-content {
+		h2 {
+			font-size: 29px;
+			line-height: 1.2;
+		}
+
+		h3 {
+			margin-block-start: 20px;
+			font-size: 20px;
+		}
+
+		h4 {
+			margin: 50px 0 20px;
+			font-size: 16px;
+		}
+
+		code {
+			display: inline;
+			padding: 3px;
+			color: #222;
+			white-space: normal;
+		}
+
+		pre {
+			overflow-x: auto;
+			padding: 13px;
+			border: 1px solid var(--wp--preset--color--light-grey-1);
+			background: var(--wp--preset--color--white);
+			font-size: 13px;
+			line-height: 1.8;
+			white-space: pre;
+
+			code {
+				display: block;
+				padding: 0;
+				background: none;
+				font-size: inherit;
+				white-space: inherit;
+			}
+		}
+	}
+
+	&__actions {
+		display: flex;
+		align-items: center;
+		gap: 5px;
+	}
+
+	&__button {
+		display: inline-block;
+		padding: 5px 12px;
+		border: 1px solid currentColor;
+		border-radius: 4px;
+		box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+		font-size: 14px;
+		line-height: 1.3;
+		text-decoration: none;
+
+		&:hover {
+			border-color: $o2-blue;
+			background: $o2-blue-dark;
+			color: var(--wp--preset--color--white);
+		}
+
+		&:focus-visible {
+			outline: 1.5px solid $o2-blue;
+			outline-offset: -1.5px;
+			background: $o2-blue;
+			box-shadow: inset 0 0 0 3px var(--wp--preset--color--white);
+			color: var(--wp--preset--color--white);
+		}
+	}
+
+	&__button.is-following {
+		border-color: $o2-blue;
+		background: $o2-blue;
+		color: var(--wp--preset--color--white);
+
+		&:hover {
+			background: $o2-blue-dark;
+		}
+	}
+
+	&__count {
+		padding-inline-start: 5px;
+	}
+
+	&__footer {
+		padding-block-start: 15px;
+	}
+
+	&__toggle {
+		padding: 0;
+		border: 0;
+		background: none;
+		color: $o2-blue;
+		font: inherit;
+		line-height: 28px;
+		cursor: pointer;
+	}
+
+	&__icon {
+		display: inline-block;
+		width: 16px;
+		height: 16px;
+		fill: currentColor;
+		vertical-align: -2px;
+	}
+
+	&__comments {
+		margin-block-start: 10px;
+	}
+
+	&__comment {
+		padding-block: 10px;
+		border-top: 1px solid rgba(0, 0, 0, 0.13);
+	}
+
+	&__comments > &__comment:last-child {
+		padding-block-end: 16px;
+	}
+
+	&__comment-header {
+		padding-block-end: 6.4px;
+		padding-inline-end: 20px;
+	}
+
+	&__comment-avatar {
+		float: inline-start;
+		margin-block-start: 5px;
+		margin-inline-start: 3px;
+		border-radius: 50%;
+	}
+
+	&__comment-meta {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+		margin: 0;
+		margin-inline-start: 45px;
+		padding-block-start: 6px;
+		font-weight: 700;
+		line-height: 30px;
+	}
+
+	&__comment-author {
+		text-decoration: none;
+	}
+
+	// Outranks the parent theme's `:root a { font-weight: revert }`.
+	& &__time {
+		color: $o2-meta-color;
+		font-size: 12px;
+		font-weight: 300;
+		line-height: 1.2;
+		text-decoration: none;
+	}
+
+	&__comment-content {
+		margin-inline-start: 45px;
+		padding-inline-end: 20px;
+		overflow-wrap: anywhere;
+
+		p {
+			margin: 0 0 20px;
+		}
+	}
+
+	& &__comment-actions {
+		margin: 0;
+		padding-block-end: 10px;
+	}
+
+	&__comment-reply {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		font-size: 12px;
+		line-height: 20px;
+		text-decoration: none;
+	}
+
+	&__children {
+		padding-inline-start: 45px;
+	}
+
+	// As on o2, meta links don't underline on hover, and the grey date links turn link blue.
+	& &__header a,
+	& &__comment-meta a,
+	& &__comment-reply {
+		&:hover,
+		&:focus {
+			text-decoration: none;
+		}
+	}
+
+	& &__date a:hover,
+	& &__date a:focus,
+	& &__time:hover,
+	& &__time:focus {
+		color: $o2-blue;
+	}
+
+	&__pagination {
+		display: flex;
+		justify-content: center;
+	}
+
+	&__more[hidden] {
+		display: none;
+	}
+
+	&__loading {
+		margin: 0;
+		color: var(--wp--preset--color--charcoal-4);
+		font-size: var(--wp--preset--font-size--small);
+		text-align: center;
+	}
+
+	&__end {
+		margin-block-end: 0;
+		color: var(--wp--preset--color--charcoal-4);
+		font-size: var(--wp--preset--font-size--small);
+	}
+}

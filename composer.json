@@ -100,7 +100,9 @@
 		"wporg/meeting-calendar": "dev-master",
 		"wporg/wporg-repo-tools": "dev-trunk",
 		"wporg/wporg-mu-plugins": "dev-build",
-		"wporg/wporg-parent-2021": "dev-build"
+		"wporg/wporg-parent-2021": "dev-build",
+		"phpunit/phpunit": "^9.6",
+		"yoast/phpunit-polyfills": "^2.0"
 	},
 	"scripts": {
 		"format": "phpcbf -p",

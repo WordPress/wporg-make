@@ -1,3 +1,27 @@
+// Same proportions and breakpoint as o2's content area and sidebar (wporg-breathe-2024).
+.wp-block-columns.wporg-make-front-columns {
+	justify-content: space-between;
+
+	> .wp-block-column:first-child {
+		flex: 0 0 68%;
+		padding-inline-end: var(--wp--preset--spacing--20);
+	}
+
+	> .wp-block-column:last-child {
+		flex: 0 0 25%;
+	}
+
+	@media (max-width: 876px) {
+		flex-wrap: wrap !important;
+
+		> .wp-block-column:first-child,
+		> .wp-block-column:last-child {
+			flex-basis: 100%;
+			padding-inline-end: 0;
+		}
+	}
+}
+
 .wporg-make-front-page-intro {
 
 	@media (max-width: 899px) {

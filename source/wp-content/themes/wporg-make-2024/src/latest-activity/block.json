@@ -1,0 +1,25 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "wporg-make/latest-activity",
+	"version": "0.1.0",
+	"title": "Latest activity",
+	"category": "widgets",
+	"icon": "list-view",
+	"description": "Show the newest posts from the Make team blogs, with their comments.",
+	"attributes": {},
+	"supports": {
+		"align": [ "wide" ],
+		"html": false,
+		"interactivity": {
+			"clientNavigation": true
+		},
+		"spacing": {
+			"margin": [ "top", "bottom" ]
+		}
+	},
+	"textdomain": "wporg",
+	"editorScript": "file:./index.js",
+	"viewScriptModule": "file:./view.js",
+	"style": "file:./style-index.css"
+}

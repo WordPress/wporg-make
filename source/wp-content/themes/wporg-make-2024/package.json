@@ -8,6 +8,7 @@
 	"devDependencies": {
 		"@wordpress/block-editor": "19.0.0",
 		"@wordpress/blocks": "17.0.0",
+		"@wordpress/interactivity": "8.0.0",
 		"@wordpress/scripts": "37.0.0",
 		"@wordpress/server-side-render": "7.0.0"
 	},
