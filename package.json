@@ -20,6 +20,7 @@
 		"setup:tools": "yarn && composer install && TEXTDOMAIN=wporg composer exec update-configs",
 		"setup:wp": "wp-env run cli bash env/setup.sh",
 		"start:theme": "yarn workspace wporg-make-2024 start",
+		"test:php": "wp-env run tests-cli --env-cwd=/var/www/html/ ./vendor/bin/phpunit",
 		"update:tools": "composer update && TEXTDOMAIN=wporg composer exec update-configs",
 		"wp-env": "wp-env"
 	},

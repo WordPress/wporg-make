@@ -1,0 +1,359 @@
+<?php
+/**
+ * Tests for the Latest activity block.
+ *
+ * @package WordPressdotorg\Theme\Make_2024
+ */
+
+declare( strict_types = 1 );
+
+use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_activity_page;
+use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_allowed_sites;
+use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_redirect_url;
+use function WordPressdotorg\Theme\Make_2024\Latest_Activity\render;
+
+/**
+ * Covers which blogs and items appear, paging across blogs, and the rendered markup.
+ *
+ * @group latest-activity
+ */
+class Test_Latest_Activity extends WP_UnitTestCase {
+
+	/**
+	 * Team blog with a `make_site` post.
+	 *
+	 * @var int
+	 */
+	protected static int $core;
+
+	/**
+	 * Second team blog with a `make_site` post.
+	 *
+	 * @var int
+	 */
+	protected static int $design;
+
+	/**
+	 * Blog included through the extras, without a `make_site` post.
+	 *
+	 * @var int
+	 */
+	protected static int $updates;
+
+	/**
+	 * Public blog that nothing lists.
+	 *
+	 * @var int
+	 */
+	protected static int $unlisted;
+
+	/**
+	 * Listed blog locked to its members.
+	 *
+	 * @var int
+	 */
+	protected static int $members_only;
+
+	/**
+	 * Listed blog that is archived.
+	 *
+	 * @var int
+	 */
+	protected static int $archived;
+
+	/**
+	 * Author of the test content.
+	 *
+	 * @var int
+	 */
+	protected static int $author;
+
+	/**
+	 * Creates the blogs once; creating tables inside a test would commit its transaction.
+	 *
+	 * @param WP_UnitTest_Factory $factory Test factory.
+	 */
+	public static function wpSetUpBeforeClass( WP_UnitTest_Factory $factory ): void {
+		self::$core         = $factory->blog->create( array( 'path' => '/core/' ) );
+		self::$design       = $factory->blog->create( array( 'path' => '/design/' ) );
+		self::$updates      = $factory->blog->create( array( 'path' => '/updates/' ) );
+		self::$unlisted     = $factory->blog->create( array( 'path' => '/unlisted/' ) );
+		self::$members_only = $factory->blog->create( array( 'path' => '/members-only/' ) );
+		self::$archived     = $factory->blog->create( array( 'path' => '/archived/' ) );
+		self::$author       = $factory->user->create();
+
+		$listed = array(
+			'core'         => self::$core,
+			'design'       => self::$design,
+			'members-only' => self::$members_only,
+			'archived'     => self::$archived,
+		);
+		foreach ( $listed as $slug => $blog_id ) {
+			$make_site = $factory->post->create(
+				array(
+					'post_type'  => 'make_site',
+					'post_name'  => $slug,
+					'post_title' => ucfirst( $slug ),
+				)
+			);
+			update_post_meta( $make_site, 'make_site_id', $blog_id );
+		}
+
+		update_blog_option( self::$members_only, 'active_plugins', array( 'subscribers-only.php' ) );
+		wp_update_site( self::$archived, array( 'archived' => 1 ) );
+	}
+
+	/**
+	 * Deletes the blogs and their tables.
+	 */
+	public static function wpTearDownAfterClass(): void {
+		foreach ( array( self::$core, self::$design, self::$updates, self::$unlisted, self::$members_only, self::$archived ) as $blog_id ) {
+			wp_delete_site( $blog_id );
+		}
+	}
+
+	/**
+	 * Only listed, public, open blogs are read. Including any public blog would put private team content on the homepage.
+	 */
+	public function test_allowed_sites_are_listed_open_blogs_only(): void {
+		$sites = get_allowed_sites();
+
+		$expected = array( self::$core, self::$design, self::$updates );
+		$actual   = array_keys( $sites );
+		sort( $expected );
+		sort( $actual );
+
+		$this->assertSame( $expected, $actual );
+		$this->assertSame( 'core', $sites[ self::$core ]['slug'] );
+		$this->assertSame( 'Team Updates', $sites[ self::$updates ]['name'] );
+	}
+
+	/**
+	 * Each eligibility rule keeps its kind of content out, while eligible content still shows.
+	 *
+	 * @dataProvider data_ineligible_content
+	 *
+	 * @param string $kind Kind of ineligible content to create.
+	 */
+	public function test_excludes_ineligible_content( string $kind ): void {
+		$control = $this->create_post( self::$core );
+
+		switch ( $kind ) {
+			case 'private post':
+				$ineligible = 'post:' . $this->create_post( self::$core, array( 'post_status' => 'private' ) );
+				break;
+
+			case 'password-protected post':
+				$ineligible = 'post:' . $this->create_post( self::$core, array( 'post_password' => 'secret' ) );
+				break;
+
+			case 'xpost':
+				$post_id = $this->create_post( self::$core );
+				switch_to_blog( self::$core );
+				add_post_meta( $post_id, '_xpost_original_permalink', 'https://example.org/design/original/' );
+				restore_current_blog();
+				$ineligible = 'post:' . $post_id;
+				break;
+
+			case 'post by a spam author':
+				$spammer = self::factory()->user->create();
+				$this->mark_user_as_spam( $spammer );
+				$ineligible = 'post:' . $this->create_post( self::$core, array( 'post_author' => $spammer ) );
+				break;
+
+			case 'unapproved comment':
+				$ineligible = 'comment:' . $this->create_comment( self::$core, $control, array( 'comment_approved' => '0' ) );
+				break;
+
+			case 'pingback':
+				$ineligible = 'comment:' . $this->create_comment( self::$core, $control, array( 'comment_type' => 'pingback' ) );
+				break;
+
+			case 'xcomment':
+				$comment_id = $this->create_comment( self::$core, $control );
+				switch_to_blog( self::$core );
+				add_comment_meta( $comment_id, 'xcomment_origin', self::$design . ':1' );
+				restore_current_blog();
+				$ineligible = 'comment:' . $comment_id;
+				break;
+
+			case 'comment on a private post':
+				$private    = $this->create_post( self::$core, array( 'post_status' => 'private' ) );
+				$ineligible = 'comment:' . $this->create_comment( self::$core, $private );
+				break;
+		}
+
+		$keys = $this->get_keys( get_activity_page( 1 )['rows'] );
+
+		$this->assertContains( self::$core . ':post:' . $control, $keys );
+		$this->assertNotContains( self::$core . ':' . $ineligible, $keys );
+	}
+
+	/**
+	 * Data provider: one case per eligibility rule.
+	 *
+	 * @return array<string, array{string}>
+	 */
+	public function data_ineligible_content(): array {
+		return array(
+			'private post'              => array( 'private post' ),
+			'password-protected post'   => array( 'password-protected post' ),
+			'xpost'                     => array( 'xpost' ),
+			'post by a spam author'     => array( 'post by a spam author' ),
+			'unapproved comment'        => array( 'unapproved comment' ),
+			'pingback'                  => array( 'pingback' ),
+			'xcomment'                  => array( 'xcomment' ),
+			'comment on a private post' => array( 'comment on a private post' ),
+		);
+	}
+
+	/**
+	 * Consecutive pages cover every item exactly once, in date order, even when one blog is much busier.
+	 *
+	 * If a branch returned only one page's worth of rows instead of offset plus a page, page 2 would
+	 * lose the busy blog's older posts.
+	 */
+	public function test_pages_merge_blogs_without_gaps_or_repeats(): void {
+		$now      = time();
+		$expected = array();
+
+		$quiet_post = $this->create_post( self::$design, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', $now - 40 * HOUR_IN_SECONDS ) ) );
+		$comment    = $this->create_comment(
+			self::$design,
+			$quiet_post,
+			array( 'comment_date_gmt' => gmdate( 'Y-m-d H:i:s', $now - 30 * MINUTE_IN_SECONDS ) )
+		);
+		$expected[] = self::$design . ':comment:' . $comment;
+
+		for ( $hours = 1; $hours <= 30; $hours++ ) {
+			$post_id    = $this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', $now - $hours * HOUR_IN_SECONDS ) ) );
+			$expected[] = self::$core . ':post:' . $post_id;
+		}
+
+		$expected[] = self::$design . ':post:' . $quiet_post;
+
+		$first  = get_activity_page( 1 );
+		$second = get_activity_page( 2 );
+
+		$this->assertSame( $expected, array_merge( $this->get_keys( $first['rows'] ), $this->get_keys( $second['rows'] ) ) );
+		$this->assertTrue( $first['has_older'] );
+		$this->assertFalse( $second['has_older'] );
+	}
+
+	/**
+	 * Requests for pages that cannot be served redirect instead of being clamped, which would cache duplicates.
+	 *
+	 * @dataProvider data_redirects
+	 *
+	 * @param string $value     Value of the page parameter.
+	 * @param int    $posts     Number of posts to create.
+	 * @param bool   $redirects Whether the request should redirect.
+	 */
+	public function test_redirects_pages_that_cannot_be_served( string $value, int $posts, bool $redirects ): void {
+		for ( $i = 0; $i < $posts; $i++ ) {
+			$this->create_post( self::$core );
+		}
+
+		$this->go_to( home_url( '/?activity-page=' . $value ) );
+
+		$this->assertSame( $redirects ? '/' : null, get_redirect_url() );
+	}
+
+	/**
+	 * Data provider: page parameter values.
+	 *
+	 * @return array<string, array{string, int, bool}>
+	 */
+	public function data_redirects(): array {
+		return array(
+			'page 2 with content' => array( '2', 21, false ),
+			'page 2 past the end' => array( '2', 1, true ),
+			'page 1, a duplicate' => array( '1', 1, true ),
+			'above the page cap'  => array( '11', 1, true ),
+			'not a number'        => array( 'two', 1, true ),
+		);
+	}
+
+	/**
+	 * Rendered items escape titles, strip team-blog shortcodes and link comments to their anchor on the team blog.
+	 */
+	public function test_render_links_and_escapes_items(): void {
+		$post_id    = $this->create_post( self::$core, array( 'post_title' => 'Ship <script>alert(1)</script> it' ) );
+		$comment_id = $this->create_comment( self::$core, $post_id, array( 'comment_content' => 'Looks good [team-only-shortcode id="1"] to me' ) );
+
+		$this->go_to( home_url( '/' ) );
+		$html = render();
+
+		$this->assertStringNotContainsString( '<script>', $html );
+		$this->assertStringContainsString( esc_url( get_blog_permalink( self::$core, $post_id ) . '#comment-' . $comment_id ), $html );
+		$this->assertStringContainsString( 'Looks good to me', $html );
+	}
+
+	/**
+	 * Creates a published post on a blog.
+	 *
+	 * @param int                  $blog_id Blog ID.
+	 * @param array<string, mixed> $args    Post arguments.
+	 * @return int Post ID.
+	 */
+	private function create_post( int $blog_id, array $args = array() ): int {
+		switch_to_blog( $blog_id );
+
+		try {
+			return self::factory()->post->create( $args + array( 'post_author' => self::$author ) );
+		} finally {
+			restore_current_blog();
+		}
+	}
+
+	/**
+	 * Creates an approved comment by the test author on a blog.
+	 *
+	 * @param int                  $blog_id Blog ID.
+	 * @param int                  $post_id Post ID.
+	 * @param array<string, mixed> $args    Comment arguments.
+	 * @return int Comment ID.
+	 */
+	private function create_comment( int $blog_id, int $post_id, array $args = array() ): int {
+		switch_to_blog( $blog_id );
+
+		try {
+			return self::factory()->comment->create(
+				$args + array(
+					'comment_post_ID'  => $post_id,
+					'user_id'          => self::$author,
+					'comment_approved' => '1',
+					'comment_type'     => 'comment',
+				)
+			);
+		} finally {
+			restore_current_blog();
+		}
+	}
+
+	/**
+	 * Flags a user as spam on the network.
+	 *
+	 * @param int $user_id User ID.
+	 */
+	private function mark_user_as_spam( int $user_id ): void {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Core has no non-deprecated API for flagging a network user as spam.
+		$wpdb->update( $wpdb->users, array( 'spam' => 1 ), array( 'ID' => $user_id ) );
+		clean_user_cache( $user_id );
+	}
+
+	/**
+	 * Turns activity rows into "blog:type:id" keys.
+	 *
+	 * @param array<int, array<string, mixed>> $rows Activity rows.
+	 * @return string[] Keys in row order.
+	 */
+	private function get_keys( array $rows ): array {
+		return array_map(
+			static fn( array $row ): string => "{$row['blog_id']}:{$row['type']}:{$row['object_id']}",
+			$rows
+		);
+	}
+}

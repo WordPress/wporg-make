@@ -1,0 +1,18 @@
+<phpunit
+	bootstrap="phpunit/bootstrap.php"
+	backupGlobals="false"
+	colors="true"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+>
+	<php>
+		<!-- make.wordpress.org is a multisite network, and the code under test reads across its blogs. -->
+		<const name="WP_TESTS_MULTISITE" value="1" />
+	</php>
+	<testsuites>
+		<testsuite name="default">
+			<directory prefix="test-" suffix=".php">./phpunit</directory>
+		</testsuite>
+	</testsuites>
+</phpunit>
