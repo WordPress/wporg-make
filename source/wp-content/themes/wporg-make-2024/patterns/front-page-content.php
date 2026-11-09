@@ -7,29 +7,47 @@
 
 ?>
 
-<!-- wp:wporg-make/latest-activity {"align":"wide"} /-->
+<!-- wp:columns {"align":"wide","className":"wporg-make-front-columns","style":{"spacing":{"blockGap":{"left":"0"}}}} -->
+<div class="wp-block-columns alignwide wporg-make-front-columns">
 
-<!-- wp:heading {"style":{"spacing":{"margin":{"top":"var:preset|spacing|50","bottom":"var:preset|spacing|30"}}}} -->
-<h2 class="wp-block-heading" style="margin-top:var(--wp--preset--spacing--50);margin-bottom:var(--wp--preset--spacing--30)"><?php esc_html_e( 'Teams', 'wporg' ); ?></h2>
-<!-- /wp:heading -->
+	<!-- wp:column -->
+	<div class="wp-block-column">
 
-<!-- wp:query {"queryId":0,"query":{"perPage":100,"postType":"make_site","order":"asc","orderBy":"date"},"align":"wide","className":"wporg-make-team-list"} -->
-<div class="wp-block-query alignwide wporg-make-team-list">
-	
-	<!-- wp:post-template {"style":{"spacing":{"blockGap":"0"}},"fontSize":"extra-small","layout":{"type":"default"}} -->
+		<!-- wp:wporg-make/latest-activity /-->
 
-		<!-- wp:template-part {"slug":"card-team","className":"has-display-contents"} /-->
+	</div>
+	<!-- /wp:column -->
 
-	<!-- /wp:post-template -->
+	<!-- wp:column -->
+	<div class="wp-block-column">
 
-	<!-- wp:query-no-results -->
+		<!-- wp:heading {"style":{"spacing":{"margin":{"top":"0","bottom":"var:preset|spacing|20"}}},"fontSize":"heading-5"} -->
+		<h2 class="wp-block-heading has-heading-5-font-size" style="margin-top:0;margin-bottom:var(--wp--preset--spacing--20)"><?php esc_html_e( 'Teams', 'wporg' ); ?></h2>
+		<!-- /wp:heading -->
 
-		<!-- wp:pattern {"slug":"wporg-make-2024/query-no-sites"} /-->
+		<!-- wp:query {"queryId":0,"query":{"perPage":100,"postType":"make_site","order":"asc","orderBy":"date"},"className":"wporg-make-team-list"} -->
+		<div class="wp-block-query wporg-make-team-list">
 
-	<!-- /wp:query-no-results -->
+			<!-- wp:post-template {"style":{"spacing":{"blockGap":"0"}},"layout":{"type":"default"}} -->
+
+				<!-- wp:template-part {"slug":"card-team-sidebar","className":"has-display-contents"} /-->
+
+			<!-- /wp:post-template -->
+
+			<!-- wp:query-no-results -->
+
+				<!-- wp:pattern {"slug":"wporg-make-2024/query-no-sites"} /-->
+
+			<!-- /wp:query-no-results -->
+
+		</div>
+		<!-- /wp:query -->
+
+	</div>
+	<!-- /wp:column -->
 
 </div>
-<!-- /wp:query -->
+<!-- /wp:columns -->
 
 <!-- wp:heading {"style":{"typography":{"fontStyle":"normal","fontWeight":"400"},"spacing":{"margin":{"top":"var:preset|spacing|50"}}},"fontSize":"heading-1","fontFamily":"eb-garamond"} -->
 <h2 class="wp-block-heading has-eb-garamond-font-family has-heading-1-font-size" style="margin-top:var(--wp--preset--spacing--50);font-style:normal;font-weight:400"><?php esc_html_e( 'Not sure which team to contribute to?', 'wporg' ); ?></h2>
