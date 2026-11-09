@@ -680,7 +680,7 @@ function get_excerpt( string $content, int $words ): string {
  * @return string Post HTML.
  */
 function get_post_html( WP_Post $post ): string {
-	$content    = $post->post_content;
+	$content    = render_code_shortcodes( $post->post_content );
 	$has_blocks = has_blocks( $content );
 	$previous   = $GLOBALS['post'] ?? null;
 
@@ -703,7 +703,32 @@ function get_post_html( WP_Post $post ): string {
  * @return string Comment HTML.
  */
 function get_comment_html( string $content ): string {
-	return link_mentions( wpautop( force_balance_tags( make_clickable( wptexturize( $content ) ) ) ) );
+	return link_mentions( wpautop( force_balance_tags( make_clickable( wptexturize( render_code_shortcodes( $content ) ) ) ) ) );
+}
+
+/**
+ * Turns SyntaxHighlighter's code shortcodes into preformatted code.
+ *
+ * The plugin isn't loaded on the root, so this keeps code readable when a post or
+ * comment falls back to the local rendering: one escaped `<pre><code>` block per
+ * shortcode, which wptexturize, make_clickable and wpautop leave alone. The plugin
+ * stores the code HTML-encoded, so it's decoded first.
+ *
+ * @param string $content Raw content.
+ * @return string Content with code shortcodes replaced.
+ */
+function render_code_shortcodes( string $content ): string {
+	if ( ! str_contains( $content, '[' ) ) {
+		return $content;
+	}
+
+	$tags = 'code|sourcecode|php|js|javascript|jscript|css|html|xhtml|xml|bash|shell|sh|sql|python|py|ruby|plain|text|diff|patch|json|java|perl|yaml';
+
+	return (string) preg_replace_callback(
+		'#\[(' . $tags . ')(?:\s[^\]]*)?\](.*?)\[/\1\]#is',
+		static fn( array $matches ): string => '<pre><code>' . esc_html( trim( html_entity_decode( $matches[2], ENT_QUOTES | ENT_HTML5 ), "\r\n" ) ) . '</code></pre>',
+		$content
+	);
 }
 
 /**

@@ -357,6 +357,18 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
+	 * SyntaxHighlighter code shortcodes show as preformatted code when rendered locally, not as raw shortcode text.
+	 */
+	public function test_renders_code_shortcodes_as_code(): void {
+		$post_id = $this->create_post( self::$core );
+		$this->create_comment( self::$core, $post_id, array( 'comment_content' => "Try this:\n\n[code]add_action( &#039;init&#039;, &#039;x&#039; );[/code]" ) );
+
+		$this->go_to( home_url( '/' ) );
+
+		$this->assertStringContainsString( '<pre><code>add_action( &#039;init&#039;, &#039;x&#039; );</code></pre>', render() );
+	}
+
+	/**
 	 * @mentions of real users link to their profiles with Jetpack Mentions' markup; anything else stays as typed.
 	 */
 	public function test_links_mentions_of_users(): void {
