@@ -45,13 +45,6 @@ const STORE = 'wporg-make/latest-activity';
  */
 const COMMENT_DEPTH = 10;
 
-add_action( 'init', __NAMESPACE__ . '\init' );
-add_action( 'template_redirect', __NAMESPACE__ . '\maybe_redirect' );
-add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\noindex_paged_views' );
-add_action( 'wp_delete_site', __NAMESPACE__ . '\flush_allowed_sites' );
-add_action( 'wp_update_site', __NAMESPACE__ . '\flush_allowed_sites' );
-add_action( 'save_post_make_site', __NAMESPACE__ . '\flush_allowed_sites' );
-
 /**
  * Registers the block from its built metadata.
  */
@@ -63,6 +56,7 @@ function init(): void {
 		)
 	);
 }
+add_action( 'init', __NAMESPACE__ . '\init' );
 
 /**
  * Returns the requested page number.
@@ -136,6 +130,7 @@ function maybe_redirect(): void {
 		exit;
 	}
 }
+add_action( 'template_redirect', __NAMESPACE__ . '\maybe_redirect' );
 
 /**
  * Marks paged views of the front page as noindex.
@@ -151,6 +146,7 @@ function noindex_paged_views( mixed $noindex ): mixed {
 
 	return $noindex;
 }
+add_filter( 'wporg_noindex_request', __NAMESPACE__ . '\noindex_paged_views' );
 
 /**
  * Returns the URL of a page of the block.

@@ -213,6 +213,9 @@ function get_cache_key( string $kind, int $page ): string {
 function flush_allowed_sites(): void {
 	wp_cache_delete( 'allowed-sites', CACHE_GROUP );
 }
+add_action( 'wp_delete_site', __NAMESPACE__ . '\flush_allowed_sites' );
+add_action( 'wp_update_site', __NAMESPACE__ . '\flush_allowed_sites' );
+add_action( 'save_post_make_site', __NAMESPACE__ . '\flush_allowed_sites' );
 
 /**
  * Queries one page of posts across the given blogs, newest first.
