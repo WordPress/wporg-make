@@ -372,13 +372,14 @@ function load_posts( int $blog_id, array $post_ids ): array {
 		unset( $comment );
 
 		$items[ "{$blog_id}:{$post->ID}" ] = array(
-			'id'       => $post->ID,
-			'user_id'  => (int) $post->post_author,
-			'date_gmt' => $post->post_date_gmt,
-			'title'    => get_title( $post ),
-			'content'  => get_post_html( $post ),
-			'url'      => $url,
-			'comments' => $post_comments,
+			'id'            => $post->ID,
+			'user_id'       => (int) $post->post_author,
+			'date_gmt'      => $post->post_date_gmt,
+			'title'         => get_title( $post ),
+			'content'       => get_post_html( $post ),
+			'url'           => $url,
+			'comments_open' => comments_open( $post ),
+			'comments'      => $post_comments,
 		);
 	}
 

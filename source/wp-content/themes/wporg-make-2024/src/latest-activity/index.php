@@ -39,6 +39,15 @@ const ANCHOR = 'latest-activity';
 const STORE = 'wporg-make/latest-activity';
 
 /**
+ * User meta key o2's Follow action stores followed post IDs under (class-o2-follow.php in the wporg mu-plugins).
+ *
+ * The IDs carry no blog ID, so a post on another blog with the same ID also reads as followed, as it does on o2.
+ *
+ * @var string
+ */
+const FOLLOWING_META_KEY = 'jpflfp2_posts_following';
+
+/**
  * Deepest level comments are nested to, as on o2. Deeper replies continue at this level.
  *
  * @var int
@@ -172,35 +181,35 @@ function get_page_url( int $page ): string {
  * @return string Block markup.
  */
 function render(): string {
-	$page = max( 1, get_requested_page() );
-
-	// The markup doesn't depend on who is viewing, so one copy serves everyone.
-	$cache_key = get_cache_key( 'html', $page );
-	$html      = wp_cache_get( $cache_key, CACHE_GROUP );
-	if ( is_string( $html ) ) {
-		return $html;
-	}
-
+	$page   = max( 1, get_requested_page() );
 	$result = get_activity_page( $page );
-	$html   = render_page( $page, $result );
 
-	if ( ! $result['failed'] ) {
-		wp_cache_set( $cache_key, $html, CACHE_GROUP, CACHE_TTL );
+	/*
+	 * The loaded posts and comments are the same for everyone, so they are cached and shared.
+	 * The markup is built per request, because Follow links carry a nonce for the viewer.
+	 */
+	$cache_key = get_cache_key( 'items', $page );
+	$items     = wp_cache_get( $cache_key, CACHE_GROUP );
+	if ( ! is_array( $items ) ) {
+		$items = get_items( $result['rows'], get_allowed_sites() );
+
+		if ( ! $result['failed'] ) {
+			wp_cache_set( $cache_key, $items, CACHE_GROUP, CACHE_TTL );
+		}
 	}
 
-	return $html;
+	return render_page( $page, $result, $items );
 }
 
 /**
  * Renders one page of posts with its pagination.
  *
- * @param int                  $page   Page number.
- * @param array<string, mixed> $result Result of get_activity_page().
+ * @param int                              $page   Page number.
+ * @param array<string, mixed>             $result Result of get_activity_page().
+ * @param array<int, array<string, mixed>> $items  Posts from get_items().
  * @return string Block markup.
  */
-function render_page( int $page, array $result ): string {
-	$items = get_items( $result['rows'], get_allowed_sites() );
-
+function render_page( int $page, array $result, array $items ): string {
 	$wrapper_attributes = get_block_wrapper_attributes(
 		array(
 			'id'                  => ANCHOR,
@@ -273,7 +282,7 @@ function render_page( int $page, array $result ): string {
 /**
  * Renders one post the way o2 does: byline, title, content, actions and comments.
  *
- * Reply and Follow link to the post on its team blog, where both work.
+ * Reply links to the post on its team blog. Follow is o2's own action, see render_follow_link().
  *
  * @param array<string, mixed> $item Post from get_items().
  * @return string Post markup.
@@ -325,7 +334,7 @@ function render_post( array $item ): string {
 			<div class="wp-block-wporg-make-latest-activity__content">%11$s</div>
 			<nav class="wp-block-wporg-make-latest-activity__actions" aria-label="%12$s">
 				<a class="wp-block-wporg-make-latest-activity__button" href="%13$s">%14$s%15$s</a>
-				<a class="wp-block-wporg-make-latest-activity__button" href="%9$s">%16$s</a>
+				%16$s
 			</nav>
 			%17$s
 		</article>',
@@ -344,9 +353,53 @@ function render_post( array $item ): string {
 		esc_url( $url . '#respond' ),
 		esc_html__( 'Reply', 'wporg' ),
 		$reply_count,
-		esc_html__( 'Follow', 'wporg' ),
+		render_follow_link( $item ),
 		$comments
 	);
+}
+
+/**
+ * Renders o2's Follow link for a post, for logged-in viewers on posts open to comments, as o2 does.
+ *
+ * It points at the team blog with the same query arguments and nonce as o2's own link, so the
+ * team blog's o2 Follow handler subscribes the viewer and sends them back to the post. The
+ * nonce is valid there because the network shares the login cookie and nonce salts.
+ *
+ * @param array<string, mixed> $item Post from get_items().
+ * @return string Follow link markup, or an empty string.
+ */
+function render_follow_link( array $item ): string {
+	if ( ! is_user_logged_in() || empty( $item['comments_open'] ) ) {
+		return '';
+	}
+
+	$post_id   = (int) $item['id'];
+	$following = in_array( $post_id, get_followed_post_ids(), true );
+
+	$url = add_query_arg(
+		array(
+			'post-id' => $post_id,
+			'action'  => $following ? 'post-comment-unsubscribe' : 'post-comment-subscribe',
+		),
+		$item['team']['url']
+	);
+
+	return sprintf(
+		'<a class="wp-block-wporg-make-latest-activity__button%1$s" href="%2$s" title="%3$s">%4$s</a>',
+		$following ? ' is-following' : '',
+		esc_url( wp_nonce_url( $url, 'post-comment-subscribe-' . $post_id ) ),
+		$following ? esc_attr__( 'Unfollow comments', 'wporg' ) : esc_attr__( 'Follow comments', 'wporg' ),
+		$following ? esc_html__( 'Following', 'wporg' ) : esc_html__( 'Follow', 'wporg' )
+	);
+}
+
+/**
+ * Returns the IDs of the posts the current user follows through o2.
+ *
+ * @return int[] Post IDs.
+ */
+function get_followed_post_ids(): array {
+	return array_map( 'intval', (array) get_user_meta( get_current_user_id(), FOLLOWING_META_KEY, true ) );
 }
 
 /**

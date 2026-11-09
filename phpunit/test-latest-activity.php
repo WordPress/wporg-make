@@ -337,6 +337,32 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Follow uses o2's own link, with its query arguments and nonce, and only for logged-in viewers as on o2.
+	 *
+	 * A link without the nonce, or one pointing at the root, would do nothing on the team blog.
+	 */
+	public function test_follow_link_matches_o2(): void {
+		$post_id = $this->create_post( self::$core );
+
+		$this->go_to( home_url( '/' ) );
+		$this->assertStringNotContainsString( 'post-comment-subscribe', render() );
+
+		wp_set_current_user( self::$author );
+		$expected = wp_nonce_url(
+			add_query_arg(
+				array(
+					'post-id' => $post_id,
+					'action'  => 'post-comment-subscribe',
+				),
+				get_allowed_sites()[ self::$core ]['url']
+			),
+			'post-comment-subscribe-' . $post_id
+		);
+
+		$this->assertStringContainsString( 'href="' . esc_url( $expected ) . '"', render() );
+	}
+
+	/**
 	 * Creates a published post on a blog.
 	 *
 	 * @param int                  $blog_id Blog ID.

@@ -114,6 +114,16 @@ $o2-meta-color: #23282d;
 		}
 	}
 
+	&__button.is-following {
+		border-color: $o2-blue;
+		background: $o2-blue;
+		color: var(--wp--preset--color--white);
+
+		&:hover {
+			background: $o2-blue-dark;
+		}
+	}
+
 	&__count {
 		padding-inline-start: 5px;
 	}
