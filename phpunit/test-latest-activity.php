@@ -13,6 +13,7 @@ use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_items;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_redirect_url;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\remove_o2_post_actions;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\render;
+use function WordPressdotorg\Theme\Make_2024\Latest_Activity\use_local_layout_classes;
 
 /**
  * Covers which blogs, posts and comments appear, paging across blogs, and the rendered markup.
@@ -405,6 +406,39 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 		$html = "<p>Body</p><nav class='o2-post-footer-actions'><ul class='o2-post-footer-action-row'><li class='o2-post-footer-action'><a href='#'>Login to Reply</a></li></ul><div class='o2-post-footer-action-likes'></div><ul class='o2-post-footer-action-row'><li class='o2-post-footer-action'><span class=\"o2-resolve-wrap\"><a href=\"#\" class=\"o2-resolve-link\" data-action=\"resolvedposts\">To-do</a><ul></ul></span></li></ul></nav><p class=\"o2-appended-tags\">#core</p>";
 
 		$this->assertSame( '<p>Body</p><p class="o2-appended-tags">#core</p>', remove_o2_post_actions( $html ) );
+	}
+
+	/**
+	 * A team blog's layout classes are swapped for the root's, whose CSS the root prints, but only when the blocks pair up.
+	 *
+	 * @dataProvider data_layout_classes
+	 *
+	 * @param string      $remote   Post HTML from the team blog.
+	 * @param string      $local    The same post rendered on the root.
+	 * @param string|null $expected Expected HTML, or null when the renderings don't pair up.
+	 */
+	public function test_uses_local_layout_classes( string $remote, string $local, ?string $expected ): void {
+		$this->assertSame( $expected, use_local_layout_classes( $remote, $local ) );
+	}
+
+	/**
+	 * Team blog and root renderings of a post.
+	 *
+	 * @return array<string, array{0: string, 1: string, 2: string|null}>
+	 */
+	public function data_layout_classes(): array {
+		return array(
+			'matching blocks'  => array(
+				'<div class="wp-block-group wp-container-core-group-is-layout-37dd22d4"><p class="wp-elements-aa11">wp-container-core-group-is-layout-37dd22d4</p></div>',
+				'<div class="wp-block-group wp-container-core-group-is-layout-1eb3483f"><p class="wp-elements-bb22">wp-container-core-group-is-layout-37dd22d4</p></div>',
+				'<div class="wp-block-group wp-container-core-group-is-layout-1eb3483f"><p class="wp-elements-bb22">wp-container-core-group-is-layout-37dd22d4</p></div>',
+			),
+			'different blocks' => array(
+				'<div class="wp-container-core-group-is-layout-37dd22d4"></div><div class="wp-container-core-columns-is-layout-0a0a0a0a"></div>',
+				'<div class="wp-container-core-columns-is-layout-48e007ce"></div><div class="wp-container-core-group-is-layout-1eb3483f"></div>',
+				null,
+			),
+		);
 	}
 
 	/**

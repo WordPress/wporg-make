@@ -378,7 +378,9 @@ function get_items( array $rows, array $sites ): array {
 	// Prefer each team blog's own rendering; the local rendering stays for anything it doesn't return.
 	$rendered = fetch_rendered_content( $loaded, $sites );
 	foreach ( $loaded as $key => $item ) {
-		$loaded[ $key ]['content'] = $rendered['posts'][ $key ] ?? $item['content'];
+		if ( isset( $rendered['posts'][ $key ] ) ) {
+			$loaded[ $key ]['content'] = use_local_layout_classes( $rendered['posts'][ $key ], $item['content'] ) ?? $item['content'];
+		}
 
 		foreach ( $item['comments'] as $index => $comment ) {
 			$loaded[ $key ]['comments'][ $index ]['content'] = $rendered['comments'][ "{$item['blog_id']}:{$comment['id']}" ] ?? $comment['content'];
@@ -394,6 +396,57 @@ function get_items( array $rows, array $sites ): array {
 	}
 
 	return $items;
+}
+
+/**
+ * Swaps the layout classes in a team blog's rendering of a post for the root's own.
+ *
+ * Layout and element styles (columns, flex groups, link colors) come as classes named
+ * after a hash of their settings, with the CSS printed only on the page that rendered
+ * the blocks. The team blog hashes its own theme settings, so its classes have no CSS
+ * on the root. The root's rendering of the same post carries the root's classes, whose
+ * CSS this request prints. Both render the same blocks, so the classes pair up in order.
+ *
+ * @param string $remote Post HTML rendered by the team blog.
+ * @param string $local  The same post rendered on the root.
+ * @return string|null The team blog's HTML with the root's layout classes, or null if the
+ *                     two renderings' layout classes don't pair up.
+ */
+function use_local_layout_classes( string $remote, string $local ): ?string {
+	$class_attribute = '/\bclass=(["\'])(.*?)\1/s';
+	$layout_class    = '/\bwp-(?:container|elements)-[a-z0-9-]+/';
+
+	$find = static function ( string $html ) use ( $class_attribute, $layout_class ): array {
+		preg_match_all( $class_attribute, $html, $attributes );
+		preg_match_all( $layout_class, implode( ' ', $attributes[2] ), $classes );
+
+		return $classes[0];
+	};
+
+	$local_classes  = $find( $local );
+	$remote_classes = $find( $remote );
+
+	// The part before the hash names the block and the kind of style; it must match class for class.
+	$strip_hash = static fn( string $name ): string => (string) preg_replace( '/-[a-f0-9]+$/', '', $name );
+	if ( array_map( $strip_hash, $local_classes ) !== array_map( $strip_hash, $remote_classes ) ) {
+		return null;
+	}
+
+	$index = 0;
+
+	return (string) preg_replace_callback(
+		$class_attribute,
+		static function ( array $attribute ) use ( $layout_class, $local_classes, &$index ): string {
+			return (string) preg_replace_callback(
+				$layout_class,
+				static function () use ( $local_classes, &$index ): string {
+					return $local_classes[ $index++ ];
+				},
+				$attribute[0]
+			);
+		},
+		$remote
+	);
 }
 
 /**
