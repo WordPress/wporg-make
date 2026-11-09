@@ -389,8 +389,13 @@ $o2-meta-color: #23282d;
 		gap: var(--wp--preset--spacing--20);
 	}
 
-	&__older {
+	&__more {
 		margin-inline-start: auto;
+
+		&.is-loading {
+			opacity: 0.6;
+			pointer-events: none;
+		}
 	}
 
 	&__end {

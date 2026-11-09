@@ -25,6 +25,16 @@ require_once __DIR__ . '/query.php';
 const QUERY_ARG = 'activity-page';
 
 /**
+ * Query string parameter holding the first page of a range, for "Load more".
+ *
+ * `?activity-page=3&activity-from=1` renders pages 1 to 3, which is what the
+ * Interactivity API router swaps in when the next page is loaded in place.
+ *
+ * @var string
+ */
+const FROM_ARG = 'activity-from';
+
+/**
  * ID of the block's wrapper, which pagination links point to.
  *
  * @var string
@@ -95,6 +105,24 @@ function get_requested_page(): int {
 }
 
 /**
+ * Returns the first page of the requested range.
+ *
+ * @param int $page Last page of the range.
+ * @return int The first page: the requested one when it's a valid page up to $page, otherwise $page.
+ */
+function get_requested_from( int $page ): int {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Read-only, and only a canonical integer is accepted.
+	$raw = isset( $_GET[ FROM_ARG ] ) ? wp_unslash( $_GET[ FROM_ARG ] ) : '';
+	if ( ! is_string( $raw ) || (string) (int) $raw !== $raw ) {
+		return $page;
+	}
+
+	$from = (int) $raw;
+
+	return $from >= 1 && $from <= $page ? $from : $page;
+}
+
+/**
  * Returns where a request for an invalid or empty page should go.
  *
  * Redirecting rather than clamping keeps duplicate pages out of the page cache.
@@ -153,7 +181,7 @@ add_action( 'template_redirect', __NAMESPACE__ . '\maybe_redirect' );
  */
 function noindex_paged_views( array $robots ): array {
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only paging parameter.
-	if ( is_front_page() && isset( $_GET[ QUERY_ARG ] ) ) {
+	if ( is_front_page() && ( isset( $_GET[ QUERY_ARG ] ) || isset( $_GET[ FROM_ARG ] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only paging parameters.
 		$robots['noindex'] = true;
 		$robots['follow']  = true;
 	}
@@ -186,35 +214,17 @@ function get_page_url( int $page ): string {
  * @return string Block markup.
  */
 function render(): string {
-	$page   = max( 1, get_requested_page() );
-	$result = get_activity_page( $page );
+	$page = max( 1, get_requested_page() );
+	$from = get_requested_from( $page );
 
-	/*
-	 * The loaded posts and comments are the same for everyone, so they are cached and shared.
-	 * The markup is built per request, because Follow links carry a nonce for the viewer.
-	 */
-	$cache_key = get_cache_key( 'items', $page );
-	$cached    = wp_cache_get( $cache_key, CACHE_GROUP );
-	if ( is_array( $cached ) && isset( $cached['items'], $cached['css'] ) ) {
-		$items = $cached['items'];
-		add_block_supports_css( (string) $cached['css'] );
-	} else {
-		$items = get_items( $result['rows'], get_allowed_sites() );
-
-		// Rendering the posts added their layout rules to this request's block-supports styles; keep them for cache hits.
-		$css = (string) wp_style_engine_get_stylesheet_from_context( 'block-supports', array( 'prettify' => false ) );
-
-		if ( ! $result['failed'] ) {
-			wp_cache_set(
-				$cache_key,
-				array(
-					'items' => $items,
-					'css'   => $css,
-				),
-				CACHE_GROUP,
-				CACHE_TTL
-			);
-		}
+	$items     = array();
+	$failed    = false;
+	$has_older = false;
+	for ( $number = $from; $number <= $page; $number++ ) {
+		$result    = get_activity_page( $number );
+		$failed    = $failed || $result['failed'];
+		$has_older = $result['has_older'];
+		$items     = array_merge( $items, get_page_items( $number, $result ) );
 	}
 
 	enqueue_block_styles( $items );
@@ -230,7 +240,46 @@ function render(): string {
 		)
 	);
 
-	return render_page( $page, $result, $items );
+	return render_page( $from, $page, $has_older, $failed, $items );
+}
+
+/**
+ * Returns one page's posts with their comments, from the cache when possible.
+ *
+ * The loaded posts and comments are the same for everyone, so they are cached and shared.
+ * The markup is built per request, because Follow links carry a nonce for the viewer.
+ *
+ * @param int                  $page   Page number.
+ * @param array<string, mixed> $result Result of get_activity_page() for the page.
+ * @return array<int, array<string, mixed>> Posts from get_items().
+ */
+function get_page_items( int $page, array $result ): array {
+	$cache_key = get_cache_key( 'items', $page );
+	$cached    = wp_cache_get( $cache_key, CACHE_GROUP );
+	if ( is_array( $cached ) && isset( $cached['items'], $cached['css'] ) ) {
+		add_block_supports_css( (string) $cached['css'] );
+
+		return $cached['items'];
+	}
+
+	$items = get_items( $result['rows'], get_allowed_sites() );
+
+	// Rendering the posts added their layout rules to this request's block-supports styles; keep them for cache hits.
+	$css = (string) wp_style_engine_get_stylesheet_from_context( 'block-supports', array( 'prettify' => false ) );
+
+	if ( ! $result['failed'] ) {
+		wp_cache_set(
+			$cache_key,
+			array(
+				'items' => $items,
+				'css'   => $css,
+			),
+			CACHE_GROUP,
+			CACHE_TTL
+		);
+	}
+
+	return $items;
 }
 
 /**
@@ -341,24 +390,28 @@ function add_block_supports_css( string $css ): void {
 }
 
 /**
- * Renders one page of posts with its pagination.
+ * Renders a range of pages of posts with their pagination.
  *
- * @param int                              $page   Page number.
- * @param array<string, mixed>             $result Result of get_activity_page().
- * @param array<int, array<string, mixed>> $items  Posts from get_items().
+ * @param int                              $from      First page of the range.
+ * @param int                              $page      Last page of the range.
+ * @param bool                             $has_older Whether a page after $page exists.
+ * @param bool                             $failed    Whether a query for the range failed.
+ * @param array<int, array<string, mixed>> $items     Posts from get_items().
  * @return string Block markup.
  */
-function render_page( int $page, array $result, array $items ): string {
+function render_page( int $from, int $page, bool $has_older, bool $failed, array $items ): string {
+	// The wrapper is a router region, so "Load more" can swap in a longer range without a page load.
 	$wrapper_attributes = get_block_wrapper_attributes(
 		array(
-			'id'                  => ANCHOR,
-			'data-wp-interactive' => STORE,
-			'data-wp-init'        => 'callbacks.localizeShortcodeTimes',
+			'id'                    => ANCHOR,
+			'data-wp-interactive'   => STORE,
+			'data-wp-router-region' => 'wporg-make-latest-activity',
+			'data-wp-init'          => 'callbacks.localizeShortcodeTimes',
 		)
 	);
 
 	// Keep a failed query out of the page cache, so the front page recovers as soon as the database does.
-	if ( $result['failed'] && ! headers_sent() ) {
+	if ( $failed && ! headers_sent() ) {
 		nocache_headers();
 	}
 
@@ -382,18 +435,33 @@ function render_page( int $page, array $result, array $items ): string {
 	}
 
 	$links = '';
-	if ( $page > 1 ) {
+	if ( $from > 1 ) {
 		$links .= sprintf(
 			'<a class="wp-block-wporg-make-latest-activity__newer" href="%1$s">%2$s</a>',
-			esc_url( get_page_url( $page - 1 ) ),
+			esc_url( get_page_url( $from - 1 ) ),
 			esc_html__( '← Newer', 'wporg' )
 		);
 	}
-	if ( $result['has_older'] ) {
+	if ( $has_older ) {
+		// Without JavaScript this opens the next page; with it, the router swaps in this range extended by that page.
+		$range = add_query_arg(
+			array(
+				QUERY_ARG => $page + 1,
+				FROM_ARG  => $from,
+			),
+			home_url( '/' )
+		);
+
 		$links .= sprintf(
-			'<a class="wp-block-wporg-make-latest-activity__older" href="%1$s">%2$s</a>',
+			'<a class="wp-block-wporg-make-latest-activity__button wp-block-wporg-make-latest-activity__more" href="%1$s" %2$s data-wp-on--click="actions.loadMore" data-wp-class--is-loading="context.isLoading" data-wp-bind--aria-busy="context.isLoading">%3$s</a>',
 			esc_url( get_page_url( $page + 1 ) ),
-			esc_html__( 'Older →', 'wporg' )
+			wp_interactivity_data_wp_context(
+				array(
+					'href'      => $range,
+					'isLoading' => false,
+				)
+			),
+			esc_html__( 'Load more', 'wporg' )
 		);
 	}
 
@@ -468,7 +536,7 @@ function render_post( array $item ): string {
 
 	// The content is the team blog's own rendered HTML, served on the same origin, so it is output as the blog itself would.
 	return sprintf(
-		'<article class="wp-block-wporg-make-latest-activity__item %1$s" %2$s>
+		'<article class="wp-block-wporg-make-latest-activity__item %1$s" %2$s data-wp-key="%18$s" data-wp-init="callbacks.initPost">
 			<header class="wp-block-wporg-make-latest-activity__header">
 				<a class="wp-block-wporg-make-latest-activity__avatar" href="%3$s"><img src="%4$s" alt="" width="50" height="50" loading="lazy" /></a>
 				<a class="wp-block-wporg-make-latest-activity__author" href="%3$s">%5$s</a>
@@ -500,7 +568,8 @@ function render_post( array $item ): string {
 		esc_html__( 'Reply', 'wporg' ),
 		$reply_count,
 		render_follow_link( $item ),
-		$comments
+		$comments,
+		esc_attr( $item['team']['slug'] . '-' . $item['id'] )
 	);
 }
 

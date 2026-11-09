@@ -11,7 +11,9 @@
 	"supports": {
 		"align": [ "wide" ],
 		"html": false,
-		"interactivity": true,
+		"interactivity": {
+			"clientNavigation": true
+		},
 		"spacing": {
 			"margin": [ "top", "bottom" ]
 		}

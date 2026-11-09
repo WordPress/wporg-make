@@ -287,6 +287,34 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A range renders every page in it, and Load more links to the next page and to the range extended by it.
+	 *
+	 * Without the range, Load more would swap in only the next page and drop the posts already shown.
+	 */
+	public function test_range_renders_every_page_and_extends_with_load_more(): void {
+		update_option( 'posts_per_page', 10 );
+		for ( $i = 0; $i < 25; $i++ ) {
+			$this->create_post( self::$core );
+		}
+
+		$this->go_to( home_url( '/?activity-page=2&activity-from=1' ) );
+		$html = render();
+
+		$this->assertSame( 20, substr_count( $html, '<article class="wp-block-wporg-make-latest-activity__item ' ) );
+		$this->assertStringNotContainsString( '__newer', $html );
+		$this->assertStringContainsString( 'href="' . esc_url( home_url( '/?activity-page=3#latest-activity' ) ) . '"', $html );
+		$this->assertStringContainsString(
+			wp_interactivity_data_wp_context(
+				array(
+					'href'      => home_url( '/?activity-page=3&activity-from=1' ),
+					'isLoading' => false,
+				)
+			),
+			$html
+		);
+	}
+
+	/**
 	 * Requests for pages that cannot be served redirect instead of being clamped, which would cache duplicates.
 	 *
 	 * Only pages that can never be served redirect permanently; browsers keep a 301.
