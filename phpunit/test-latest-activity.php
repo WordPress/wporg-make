@@ -358,11 +358,11 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The "Login to Reply" bar is removed from team-blog HTML as o2 prints it, while o2's tag line stays.
+	 * The "Login to Reply" and To-do bar is removed from team-blog HTML as o2 prints it, while o2's tag line stays.
 	 */
 	public function test_removes_o2_post_actions(): void {
 		// Markup as o2's modules/post-actions/load.php prints it, single quotes included.
-		$html = "<p>Body</p><nav class='o2-post-footer-actions'><ul class='o2-post-footer-action-row'><li class='o2-post-footer-action'><a href='#'>Login to Reply</a></li></ul><div class='o2-post-footer-action-likes'></div><ul class='o2-post-footer-action-row'></ul></nav><p class=\"o2-appended-tags\">#core</p>";
+		$html = "<p>Body</p><nav class='o2-post-footer-actions'><ul class='o2-post-footer-action-row'><li class='o2-post-footer-action'><a href='#'>Login to Reply</a></li></ul><div class='o2-post-footer-action-likes'></div><ul class='o2-post-footer-action-row'><li class='o2-post-footer-action'><span class=\"o2-resolve-wrap\"><a href=\"#\" class=\"o2-resolve-link\" data-action=\"resolvedposts\">To-do</a><ul></ul></span></li></ul></nav><p class=\"o2-appended-tags\">#core</p>";
 
 		$this->assertSame( '<p>Body</p><p class="o2-appended-tags">#core</p>', remove_o2_post_actions( $html ) );
 	}
