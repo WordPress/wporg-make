@@ -536,7 +536,7 @@ function get_post_html( WP_Post $post ): string {
 		$content = wpautop( $content );
 	}
 
-	return wp_filter_content_tags( strip_shortcode_tags( shortcode_unautop( $content ) ) );
+	return link_mentions( wp_filter_content_tags( strip_shortcode_tags( shortcode_unautop( $content ) ) ) );
 }
 
 /**
@@ -546,7 +546,106 @@ function get_post_html( WP_Post $post ): string {
  * @return string Comment HTML.
  */
 function get_comment_html( string $content ): string {
-	return wpautop( force_balance_tags( make_clickable( wptexturize( $content ) ) ) );
+	return link_mentions( wpautop( force_balance_tags( make_clickable( wptexturize( $content ) ) ) ) );
+}
+
+/**
+ * Links @mentions of WordPress.org users to their profiles, with the markup Jetpack Mentions uses on o2.
+ *
+ * Only handles that belong to a user in good standing are linked. Text inside links, code and
+ * preformatted blocks is left alone, as are handles that are part of a word or an email address.
+ *
+ * @param string $html Rendered HTML.
+ * @return string HTML with mentions linked.
+ */
+function link_mentions( string $html ): string {
+	if ( ! str_contains( $html, '@' ) ) {
+		return $html;
+	}
+
+	$parts = preg_split( '/(<[^>]*>)/', $html, -1, PREG_SPLIT_DELIM_CAPTURE );
+	if ( false === $parts ) {
+		return $html;
+	}
+
+	// Handles start after the start of the text, whitespace or opening punctuation.
+	$pattern = '/(?<=^|[\s(\[{>"\'])@([a-z0-9][a-z0-9_.-]*[a-z0-9_]|[a-z0-9])/i';
+	$skip    = 0;
+	$texts   = array();
+
+	foreach ( $parts as $index => $part ) {
+		if ( '' !== $part && '<' === $part[0] ) {
+			if ( preg_match( '#^<(/?)(a|code|pre|script|style)\b#i', $part, $tag ) ) {
+				$skip = max( 0, $skip + ( '/' === $tag[1] ? -1 : 1 ) );
+			}
+		} elseif ( ! $skip && str_contains( $part, '@' ) ) {
+			$texts[] = $index;
+		}
+	}
+
+	$handles = array();
+	foreach ( $texts as $index ) {
+		if ( preg_match_all( $pattern, $parts[ $index ], $matches ) ) {
+			$handles = array_merge( $handles, $matches[1] );
+		}
+	}
+
+	$users = get_mentionable_users( $handles );
+	if ( ! $users ) {
+		return $html;
+	}
+
+	foreach ( $texts as $index ) {
+		$parts[ $index ] = (string) preg_replace_callback(
+			$pattern,
+			static function ( array $matches ) use ( $users ): string {
+				$login = strtolower( $matches[1] );
+				if ( ! isset( $users[ $login ] ) ) {
+					return $matches[0];
+				}
+
+				return sprintf(
+					'<a href="%1$s" class="mention"><span class="mentions-prefix">@</span>%2$s</a>',
+					esc_url( 'https://profiles.wordpress.org/' . $users[ $login ] . '/' ),
+					esc_html( $matches[1] )
+				);
+			},
+			$parts[ $index ]
+		);
+	}
+
+	return implode( '', $parts );
+}
+
+/**
+ * Looks up which handles belong to users in good standing.
+ *
+ * @param string[] $handles Mentioned handles.
+ * @return array<string, string> Profile slugs (user_nicename), keyed by lowercase login.
+ */
+function get_mentionable_users( array $handles ): array {
+	global $wpdb;
+
+	$handles = array_values( array_unique( array_map( 'strtolower', $handles ) ) );
+	if ( ! $handles ) {
+		return array();
+	}
+
+	// One query on the indexed user_login column for all handles in this content.
+	$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Rendered content is cached with the page's items.
+		$wpdb->prepare(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The users table name comes from $wpdb.
+			"SELECT user_login, user_nicename FROM {$wpdb->users} WHERE user_login IN (" . implode( ',', array_fill( 0, count( $handles ), '%s' ) ) . ') AND spam = 0 AND deleted = 0',
+			$handles
+		)
+	);
+
+	$users = array();
+	foreach ( (array) $rows as $row ) {
+		$users[ strtolower( $row->user_login ) ] = $row->user_nicename;
+	}
+
+	return $users;
 }
 
 /**

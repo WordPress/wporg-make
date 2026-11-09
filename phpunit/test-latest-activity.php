@@ -357,6 +357,22 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
+	 * @mentions of real users link to their profiles with Jetpack Mentions' markup; anything else stays as typed.
+	 */
+	public function test_links_mentions_of_users(): void {
+		self::factory()->user->create( array( 'user_login' => 'jdoe' ) );
+		$this->create_post(
+			self::$core,
+			array( 'post_content' => '<p>Props @jdoe, @nobody-here and mail@jdoe.example for <code>@jdoe</code>.</p>' )
+		);
+
+		$this->go_to( home_url( '/' ) );
+		$html = render();
+
+		$this->assertStringContainsString( 'Props <a href="https://profiles.wordpress.org/jdoe/" class="mention"><span class="mentions-prefix">@</span>jdoe</a>, @nobody-here and mail@jdoe.example for <code>@jdoe</code>.', $html );
+	}
+
+	/**
 	 * Follow uses o2's own link, with its query arguments and nonce, and only for logged-in viewers as on o2.
 	 *
 	 * A link without the nonce, or one pointing at the root, would do nothing on the team blog.
