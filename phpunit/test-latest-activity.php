@@ -11,6 +11,7 @@ use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_activity_page;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_allowed_sites;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_items;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_redirect_url;
+use function WordPressdotorg\Theme\Make_2024\Latest_Activity\remove_o2_post_actions;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\render;
 
 /**
@@ -354,6 +355,16 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( '<script>', $html );
 		$this->assertStringContainsString( '>[Proposal] Release notes are up.</p>', $html );
 		$this->assertMatchesRegularExpression( '/__children">.*__comment-reply" href="' . $reply_link . '"/s', $html );
+	}
+
+	/**
+	 * The "Login to Reply" bar is removed from team-blog HTML as o2 prints it, while o2's tag line stays.
+	 */
+	public function test_removes_o2_post_actions(): void {
+		// Markup as o2's modules/post-actions/load.php prints it, single quotes included.
+		$html = "<p>Body</p><nav class='o2-post-footer-actions'><ul class='o2-post-footer-action-row'><li class='o2-post-footer-action'><a href='#'>Login to Reply</a></li></ul><div class='o2-post-footer-action-likes'></div><ul class='o2-post-footer-action-row'></ul></nav><p class=\"o2-appended-tags\">#core</p>";
+
+		$this->assertSame( '<p>Body</p><p class="o2-appended-tags">#core</p>', remove_o2_post_actions( $html ) );
 	}
 
 	/**

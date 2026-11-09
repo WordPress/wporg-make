@@ -516,7 +516,8 @@ function fetch_rendered_content( array $loaded, array $sites ): array {
  * @return string HTML without o2's action bar.
  */
 function remove_o2_post_actions( string $html ): string {
-	return (string) preg_replace( '#<nav class="o2-post-footer-actions">.*?</nav>#s', '', $html );
+	// o2 prints the class in single quotes; match the element whatever the quoting.
+	return (string) preg_replace( '#<nav\b[^>]*\bo2-post-footer-actions\b[^>]*>.*?</nav>#s', '', $html );
 }
 
 /**
