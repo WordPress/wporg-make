@@ -184,6 +184,11 @@ function render(): string {
 		)
 	);
 
+	// Keep a failed query out of the page cache, so the front page recovers as soon as the database does.
+	if ( $result['failed'] && ! headers_sent() ) {
+		nocache_headers();
+	}
+
 	if ( ! $items ) {
 		return sprintf(
 			'<div %1$s><p>%2$s</p></div>',

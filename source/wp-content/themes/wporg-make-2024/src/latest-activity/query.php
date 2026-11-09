@@ -484,16 +484,48 @@ function get_comment_html( string $content ): string {
  * Removes shortcode tags but keeps what they enclose.
  *
  * Shortcodes are not run: most of a team blog's are not registered on the
- * root, and running the root's own in a switched context is unsafe. Code in
- * `<pre>` and `<code>` is left alone, since `items[i]` there is not a shortcode.
+ * root, and running the root's own in a switched context is unsafe. Only known
+ * shortcode names are removed, so bracketed words like "[Proposal]" stay, and
+ * `[[name]]` escapes turn into the literal `[name]` as core shows them. Code in
+ * `<pre>` and `<code>` is left alone.
  *
  * @param string $content Content.
  * @return string Content without shortcode tags.
  */
 function strip_shortcode_tags( string $content ): string {
-	return (string) preg_replace_callback(
-		'#<(pre|code)\b.*?</\1>|\[/?[a-z][\w-]*(?:\s[^\]]*)?\]#is',
-		static fn( array $matches ): string => isset( $matches[1] ) ? $matches[0] : '',
-		$content
+	global $shortcode_tags;
+
+	/**
+	 * Filters the shortcode names removed from team-blog content, on top of those registered on the root.
+	 *
+	 * @param string[] $names Shortcode names.
+	 */
+	$names = (array) apply_filters(
+		'wporg_make_latest_activity_shortcodes',
+		array( 'youtube', 'vimeo', 'gist', 'tweet', 'slideshare', 'polldaddy', 'crowdsignal' )
 	);
+	$names = array_filter( array_unique( array_merge( array_keys( $shortcode_tags ), $names ) ), 'is_string' );
+	if ( ! $names ) {
+		return $content;
+	}
+
+	$regex = '/' . get_shortcode_regex( $names ) . '/';
+
+	$parts = preg_split( '#(<(pre|code)\b.*?</\2>)#is', $content, -1, PREG_SPLIT_DELIM_CAPTURE );
+	if ( false === $parts ) {
+		return $content;
+	}
+
+	$output = '';
+	for ( $index = 0, $count = count( $parts ); $index < $count; $index += 3 ) {
+		$output .= (string) preg_replace_callback(
+			$regex,
+			// Groups 1 and 6 are the extra brackets of an escaped shortcode; group 5 is the enclosed content.
+			static fn( array $matches ): string => '[' === $matches[1] && ']' === $matches[6] ? substr( $matches[0], 1, -1 ) : $matches[5],
+			$parts[ $index ]
+		);
+		$output .= $parts[ $index + 1 ] ?? '';
+	}
+
+	return $output;
 }
