@@ -56,7 +56,7 @@ const CACHE_TTL = 5 * MINUTE_IN_SECONDS;
  * points at it, or its path is one of the extras. Detecting private blogs
  * instead would fail open.
  *
- * @return array<int, array{slug: string, name: string, url: string}> Allowed blogs.
+ * @return array<int, array{slug: string, name: string, url: string, excluded_terms: int[]}> Allowed blogs.
  */
 function get_allowed_sites(): array {
 	if ( ! is_multisite() ) {
@@ -100,6 +100,21 @@ function get_allowed_sites(): array {
 		)
 	);
 
+	/**
+	 * Filters the tags whose posts are left out, per team slug.
+	 *
+	 * Polyglots' locale and editor requests are routine and would crowd out
+	 * everything else; the team's own front page hides them the same way.
+	 *
+	 * @param array<string, string[]> $excluded Tag slugs keyed by team slug.
+	 */
+	$excluded = (array) apply_filters(
+		'wporg_make_latest_activity_excluded_tags',
+		array(
+			'polyglots' => array( 'editor-requests', 'request', 'clpte', 'locale-requests' ),
+		)
+	);
+
 	$candidates = get_sites(
 		array(
 			'network_id'   => get_current_network_id(),
@@ -133,13 +148,40 @@ function get_allowed_sites(): array {
 		}
 
 		$sites[ $blog_id ] = $label + array(
-			'url' => set_url_scheme( 'http://' . $site->domain . $site->path ),
+			'url'            => set_url_scheme( 'http://' . $site->domain . $site->path ),
+			'excluded_terms' => get_tag_term_ids( $blog_id, (array) ( $excluded[ $label['slug'] ] ?? array() ) ),
 		);
 	}
 
 	wp_cache_set( 'allowed-sites', $sites, CACHE_GROUP, 15 * MINUTE_IN_SECONDS );
 
 	return $sites;
+}
+
+/**
+ * Returns the term taxonomy IDs of the given tags on a blog.
+ *
+ * @param int      $blog_id Blog ID.
+ * @param string[] $slugs   Tag slugs.
+ * @return int[] Term taxonomy IDs; tags the blog doesn't have are left out.
+ */
+function get_tag_term_ids( int $blog_id, array $slugs ): array {
+	global $wpdb;
+
+	if ( ! $slugs ) {
+		return array();
+	}
+
+	$prefix = $wpdb->get_blog_prefix( $blog_id );
+	$ids    = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- Cached with the allowed blogs.
+		$wpdb->prepare(
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The prefix comes from get_blog_prefix() for an integer blog ID.
+			"SELECT tt.term_taxonomy_id FROM {$prefix}term_taxonomy tt INNER JOIN {$prefix}terms t ON t.term_id = tt.term_id WHERE tt.taxonomy = 'post_tag' AND t.slug IN (" . implode( ',', array_fill( 0, count( $slugs ), '%s' ) ) . ')',
+			array_values( $slugs )
+		)
+	);
+
+	return array_map( 'intval', $ids );
 }
 
 /**
@@ -168,13 +210,12 @@ function is_members_only( int $blog_id ): bool {
  * @return array{rows: array<int, array{blog_id: int, post_id: int, date_gmt: string}>, has_older: bool, failed: bool} The page's rows, whether an older page exists, and whether the query failed.
  */
 function get_activity_page( int $page ): array {
-	$blog_ids = array_keys( get_allowed_sites() );
 	$per_page = get_per_page();
 	$key      = get_cache_key( 'rows', $page );
 	$result   = wp_cache_get( $key, CACHE_GROUP );
 
 	if ( ! is_array( $result ) ) {
-		$rows = query_rows( $blog_ids, $page, $per_page );
+		$rows = query_rows( get_allowed_sites(), $page, $per_page );
 		if ( null === $rows ) {
 			return array(
 				'rows'      => array(),
@@ -225,15 +266,15 @@ add_action( 'save_post_make_site', __NAMESPACE__ . '\flush_allowed_sites' );
  * so no blog can come up short. One extra row tells whether an older page
  * exists.
  *
- * @param int[] $blog_ids Blog IDs to read.
- * @param int   $page     Page number.
- * @param int   $per_page Posts per page.
+ * @param array<int, array{excluded_terms: int[]}> $sites    Blogs to read, keyed by blog ID, from get_allowed_sites().
+ * @param int                                      $page     Page number.
+ * @param int                                      $per_page Posts per page.
  * @return array<int, array{blog_id: int, post_id: int, date_gmt: string}>|null Up to $per_page + 1 rows, or null when the query failed.
  */
-function query_rows( array $blog_ids, int $page, int $per_page ): ?array {
+function query_rows( array $sites, int $page, int $per_page ): ?array {
 	global $wpdb;
 
-	if ( ! $blog_ids ) {
+	if ( ! $sites ) {
 		return array();
 	}
 
@@ -243,9 +284,15 @@ function query_rows( array $blog_ids, int $page, int $per_page ): ?array {
 	$branches   = array();
 	$args       = array();
 
-	foreach ( $blog_ids as $blog_id ) {
+	foreach ( $sites as $blog_id => $site ) {
 		$blog_id = (int) $blog_id;
 		$prefix  = $wpdb->get_blog_prefix( $blog_id );
+
+		// Excluded tags are checked per post through the term_relationships primary key.
+		$excluded_tags = '';
+		if ( ! empty( $site['excluded_terms'] ) ) {
+			$excluded_tags = "AND NOT EXISTS ( SELECT 1 FROM {$prefix}term_relationships tr WHERE tr.object_id = p.ID AND tr.term_taxonomy_id IN ( " . implode( ',', array_map( 'intval', $site['excluded_terms'] ) ) . ' ) )';
+		}
 
 		/*
 		 * The plan is pinned: walk this blog's type_status_date index newest first
@@ -259,6 +306,7 @@ function query_rows( array $blog_ids, int $page, int $per_page ): ?array {
 			WHERE " . get_post_rules_sql( $prefix ) . '
 				AND u.spam = 0
 				AND u.deleted = 0
+				' . $excluded_tags . '
 			ORDER BY p.post_date DESC, p.ID DESC
 			LIMIT %d )';
 		array_push( $args, $xpost_like, $limit );

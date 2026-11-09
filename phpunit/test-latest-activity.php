@@ -231,6 +231,26 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Posts with a team's excluded tags stay out, as Polyglots' locale requests do, while its other posts show.
+	 */
+	public function test_excludes_posts_with_a_teams_excluded_tags(): void {
+		$exclude = static fn(): array => array( 'core' => array( 'locale-requests' ) );
+		add_filter( 'wporg_make_latest_activity_excluded_tags', $exclude );
+
+		$shown   = $this->create_post( self::$core );
+		$request = $this->create_post( self::$core );
+		switch_to_blog( self::$core );
+		wp_set_post_tags( $request, array( 'locale-requests' ) );
+		restore_current_blog();
+
+		$keys = $this->get_keys( get_activity_page( 1 )['rows'] );
+		remove_filter( 'wporg_make_latest_activity_excluded_tags', $exclude );
+
+		$this->assertContains( self::$core . ':' . $shown, $keys );
+		$this->assertNotContains( self::$core . ':' . $request, $keys );
+	}
+
+	/**
 	 * Consecutive pages cover every post exactly once, in date order, even when one blog is much busier.
 	 *
 	 * If a branch returned only one page's worth of rows instead of offset plus a page, page 2 would
