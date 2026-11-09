@@ -291,7 +291,7 @@ function render_post( array $item ): string {
 				<a class="wp-block-wporg-make-latest-activity__avatar" href="%3$s"><img src="%4$s" alt="" width="50" height="50" loading="lazy" /></a>
 				<a class="wp-block-wporg-make-latest-activity__author" href="%3$s">%5$s</a>
 				<span class="wp-block-wporg-make-latest-activity__date"><a href="%6$s">%7$s</a> · %8$s</span>
-				<h3 class="wp-block-wporg-make-latest-activity__title"><a href="%9$s">%10$s</a></h3>
+				<h2 class="wp-block-wporg-make-latest-activity__title"><a href="%9$s">%10$s</a></h2>
 			</header>
 			<div class="wp-block-wporg-make-latest-activity__content">%11$s</div>
 			<nav class="wp-block-wporg-make-latest-activity__actions" aria-label="%12$s">

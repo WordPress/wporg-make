@@ -238,12 +238,18 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 
 		$expected[] = self::$design . ':' . $quiet_post;
 
-		$first  = get_activity_page( 1 );
-		$second = get_activity_page( 2 );
+		// 32 posts at 10 per page: three full pages and a fourth with two.
+		update_option( 'posts_per_page', 10 );
 
-		$this->assertSame( $expected, array_merge( $this->get_keys( $first['rows'] ), $this->get_keys( $second['rows'] ) ) );
-		$this->assertTrue( $first['has_older'] );
-		$this->assertFalse( $second['has_older'] );
+		$shown = array();
+		$pages = 0;
+		do {
+			$result = get_activity_page( ++$pages );
+			$shown  = array_merge( $shown, $this->get_keys( $result['rows'] ) );
+		} while ( $result['has_older'] );
+
+		$this->assertSame( $expected, $shown );
+		$this->assertSame( 4, $pages );
 	}
 
 	/**

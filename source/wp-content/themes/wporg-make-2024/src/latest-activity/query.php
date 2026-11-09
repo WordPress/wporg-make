@@ -15,13 +15,6 @@ namespace WordPressdotorg\Theme\Make_2024\Latest_Activity;
 use WP_Post;
 
 /**
- * Posts shown per page.
- *
- * @var int
- */
-const PER_PAGE = 20;
-
-/**
  * Deepest page served.
  *
  * Caps the rows each branch of the query reads, and the URLs crawlers can walk.
@@ -29,6 +22,15 @@ const PER_PAGE = 20;
  * @var int
  */
 const MAX_PAGES = 10;
+
+/**
+ * Returns how many posts a page shows: the root site's "Blog pages show at most" setting.
+ *
+ * @return int Posts per page.
+ */
+function get_per_page(): int {
+	return max( 1, (int) get_option( 'posts_per_page', 10 ) );
+}
 
 /**
  * Object cache group.
@@ -170,7 +172,8 @@ function get_activity_page( int $page ): array {
 	$result   = wp_cache_get( $key, REQUEST_CACHE_GROUP );
 
 	if ( ! is_array( $result ) ) {
-		$rows = query_rows( $blog_ids, $page );
+		$per_page = get_per_page();
+		$rows     = query_rows( $blog_ids, $page, $per_page );
 		if ( null === $rows ) {
 			return array(
 				'rows'      => array(),
@@ -180,8 +183,8 @@ function get_activity_page( int $page ): array {
 		}
 
 		$result = array(
-			'rows'      => array_slice( $rows, 0, PER_PAGE ),
-			'has_older' => count( $rows ) > PER_PAGE && $page < MAX_PAGES,
+			'rows'      => array_slice( $rows, 0, $per_page ),
+			'has_older' => count( $rows ) > $per_page && $page < MAX_PAGES,
 			'failed'    => false,
 		);
 		wp_cache_set( $key, $result, REQUEST_CACHE_GROUP );
@@ -200,17 +203,18 @@ function get_activity_page( int $page ): array {
  *
  * @param int[] $blog_ids Blog IDs to read.
  * @param int   $page     Page number.
- * @return array<int, array{blog_id: int, post_id: int, date_gmt: string}>|null Up to PER_PAGE + 1 rows, or null when the query failed.
+ * @param int   $per_page Posts per page.
+ * @return array<int, array{blog_id: int, post_id: int, date_gmt: string}>|null Up to $per_page + 1 rows, or null when the query failed.
  */
-function query_rows( array $blog_ids, int $page ): ?array {
+function query_rows( array $blog_ids, int $page, int $per_page ): ?array {
 	global $wpdb;
 
 	if ( ! $blog_ids ) {
 		return array();
 	}
 
-	$offset     = ( $page - 1 ) * PER_PAGE;
-	$limit      = $offset + PER_PAGE + 1;
+	$offset     = ( $page - 1 ) * $per_page;
+	$limit      = $offset + $per_page + 1;
 	$xpost_like = $wpdb->esc_like( 'xpost-' ) . '%';
 	$branches   = array();
 	$args       = array();
@@ -229,7 +233,7 @@ function query_rows( array $blog_ids, int $page ): ?array {
 	}
 
 	$sql = implode( ' UNION ALL ', $branches ) . ' ORDER BY date_gmt DESC, blog_id DESC, post_id DESC LIMIT %d OFFSET %d';
-	array_push( $args, PER_PAGE + 1, $offset );
+	array_push( $args, $per_page + 1, $offset );
 
 	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery -- Table names come from get_blog_prefix() for integer blog IDs; every value is a placeholder.
 	$results = $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );

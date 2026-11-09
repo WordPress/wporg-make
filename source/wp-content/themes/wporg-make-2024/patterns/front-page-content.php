@@ -7,10 +7,6 @@
 
 ?>
 
-<!-- wp:heading {"style":{"spacing":{"margin":{"top":"0","bottom":"var:preset|spacing|30"}}}} -->
-<h2 class="wp-block-heading" style="margin-top:0;margin-bottom:var(--wp--preset--spacing--30)"><?php esc_html_e( 'Latest activity', 'wporg' ); ?></h2>
-<!-- /wp:heading -->
-
 <!-- wp:wporg-make/latest-activity {"align":"wide"} /-->
 
 <!-- wp:heading {"style":{"spacing":{"margin":{"top":"var:preset|spacing|50","bottom":"var:preset|spacing|30"}}}} -->
