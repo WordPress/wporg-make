@@ -23,9 +23,11 @@
 }
 
 // Team tiles in the main column: 3 across on desktop, 2 on tablets, 1 on phones.
+// Every row is the same height, so all tiles match the tallest one.
 .wporg-make-team-grid .wp-block-post-template {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-auto-rows: 1fr;
 	gap: var(--wp--preset--spacing--10);
 	margin: 0;
 	padding: 0;
@@ -37,6 +39,12 @@
 
 	@media (max-width: 600px) {
 		grid-template-columns: minmax(0, 1fr);
+	}
+
+	// The list's flow layout adds a top margin to every tile but the first, which made
+	// the first tile (Core) taller than the rest. The grid gap handles spacing instead.
+	> .wp-block-post {
+		margin-block: 0;
 	}
 }
 
@@ -58,6 +66,13 @@
 		content: "";
 		position: absolute;
 		inset: 0;
+	}
+
+	// Some team descriptions carry inline formatting pasted in from elsewhere (for example
+	// Mobile's `color: initial`), which would override the tile's grey text and font size.
+	.wp-block-post-content [style] {
+		color: inherit !important;
+		font-size: inherit !important;
 	}
 
 	.wp-block-post-content > *:first-child {

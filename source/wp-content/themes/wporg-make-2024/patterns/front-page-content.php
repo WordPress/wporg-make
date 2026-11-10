@@ -17,7 +17,7 @@
 		<h2 class="wp-block-heading has-heading-5-font-size" style="margin-top:0;margin-bottom:var(--wp--preset--spacing--20)"><?php esc_html_e( 'Teams', 'wporg' ); ?></h2>
 		<!-- /wp:heading -->
 
-		<!-- wp:query {"queryId":0,"query":{"perPage":100,"postType":"make_site","order":"asc","orderBy":"date"},"className":"wporg-make-team-list wporg-make-team-grid"} -->
+		<!-- wp:query {"queryId":0,"query":{"perPage":6,"postType":"make_site","order":"asc","orderBy":"date"},"className":"wporg-make-team-list wporg-make-team-grid"} -->
 		<div class="wp-block-query wporg-make-team-list wporg-make-team-grid">
 
 			<!-- wp:post-template {"layout":{"type":"default"}} -->
@@ -36,7 +36,7 @@
 		<!-- /wp:query -->
 
 		<!-- wp:paragraph {"style":{"spacing":{"margin":{"top":"var:preset|spacing|20"}}},"fontSize":"small"} -->
-		<p class="has-small-font-size" style="margin-top:var(--wp--preset--spacing--20)"><a href="<?php echo esc_url( home_url( '/teams/' ) ); ?>"><?php esc_html_e( 'All teams and their meetings', 'wporg' ); ?></a></p>
+		<p class="has-small-font-size" style="margin-top:var(--wp--preset--spacing--20)"><a href="<?php echo esc_url( home_url( '/teams/' ) ); ?>"><?php esc_html_e( 'View all teams and their meetings', 'wporg' ); ?></a></p>
 		<!-- /wp:paragraph -->
 
 		<!-- wp:group {"className":"wporg-make-latest-activity-intro","style":{"spacing":{"margin":{"top":"var:preset|spacing|50"},"padding":{"top":"var:preset|spacing|40"},"blockGap":"var:preset|spacing|10"},"border":{"top":{"color":"var:preset|color|light-grey-1","width":"1px"}}},"layout":{"type":"default"}} -->
