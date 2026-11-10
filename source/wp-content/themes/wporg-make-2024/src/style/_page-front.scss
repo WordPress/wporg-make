@@ -294,3 +294,15 @@
 		}
 	}
 }
+
+// Keep the callouts in view beside the feed, below the local navigation bar.
+@media (min-width: 877px) and (min-height: 700px) {
+	.wp-block-columns.wporg-make-front-columns > .wporg-make-front-sidebar {
+		$admin-bar: var(--wp-admin--admin-bar--height, 0px);
+		$local-nav: var(--wp--custom--local-navigation-bar--spacing--height, 60px);
+
+		align-self: flex-start;
+		position: sticky;
+		top: calc(#{$admin-bar} + #{$local-nav} + var(--wp--preset--spacing--20));
+	}
+}

@@ -7,15 +7,15 @@
 
 ?>
 
+<!-- wp:heading {"align":"wide","style":{"spacing":{"margin":{"top":"0","bottom":"var:preset|spacing|20"}}},"fontSize":"heading-5"} -->
+<h2 class="wp-block-heading alignwide has-heading-5-font-size" style="margin-top:0;margin-bottom:var(--wp--preset--spacing--20)"><?php esc_html_e( 'Teams', 'wporg' ); ?></h2>
+<!-- /wp:heading -->
+
 <!-- wp:columns {"align":"wide","className":"wporg-make-front-columns","style":{"spacing":{"blockGap":{"left":"0"}}}} -->
 <div class="wp-block-columns alignwide wporg-make-front-columns">
 
 	<!-- wp:column -->
 	<div class="wp-block-column">
-
-		<!-- wp:heading {"style":{"spacing":{"margin":{"top":"0","bottom":"var:preset|spacing|20"}}},"fontSize":"heading-5"} -->
-		<h2 class="wp-block-heading has-heading-5-font-size" style="margin-top:0;margin-bottom:var(--wp--preset--spacing--20)"><?php esc_html_e( 'Teams', 'wporg' ); ?></h2>
-		<!-- /wp:heading -->
 
 		<!-- wp:query {"queryId":0,"query":{"perPage":6,"postType":"make_site","order":"asc","orderBy":"date"},"className":"wporg-make-team-list wporg-make-team-grid"} -->
 		<div class="wp-block-query wporg-make-team-list wporg-make-team-grid">
