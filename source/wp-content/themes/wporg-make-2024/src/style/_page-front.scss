@@ -22,6 +22,108 @@
 	}
 }
 
+// Team tiles in the main column: 3 across on desktop, 2 on tablets, 1 on phones.
+// Every row is the same height, so all tiles match the tallest one.
+.wporg-make-team-grid .wp-block-post-template {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-auto-rows: 1fr;
+	gap: var(--wp--preset--spacing--10);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+
+	@media (max-width: 1100px) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	@media (max-width: 600px) {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	// The list's flow layout adds a top margin to every tile but the first, which made
+	// the first tile (Core) taller than the rest. The grid gap handles spacing instead.
+	> .wp-block-post {
+		margin-block: 0;
+	}
+}
+
+.wporg-make-team-card {
+	position: relative;
+	height: 100%;
+	box-sizing: border-box;
+	border: 1px solid var(--wp--preset--color--light-grey-1);
+	border-radius: 2px;
+	transition: border-color 0.1s ease-in-out;
+
+	&:hover,
+	&:focus-within {
+		border-color: var(--wp--preset--color--blueberry-1);
+	}
+
+	// Make the whole tile clickable through the team title link.
+	.wp-block-post-title a::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+	}
+
+	// Some team descriptions carry inline formatting pasted in from elsewhere (for example
+	// Mobile's `color: initial`), which would override the tile's grey text and font size.
+	.wp-block-post-content [style] {
+		color: inherit !important;
+		font-size: inherit !important;
+	}
+
+	.wp-block-post-content > *:first-child {
+		margin-top: 0;
+	}
+
+	.wp-block-post-content > *:last-child {
+		margin-bottom: 0;
+	}
+}
+
+// On smaller screens, show teams, then the callouts, then Latest activity, so the callouts
+// aren't buried below the feed. Unwrapping the main column lets its blocks and the sidebar
+// share one ordered stack.
+.wp-block-columns.wporg-make-front-columns {
+
+	@media (max-width: 876px) {
+		flex-direction: column;
+
+		> .wp-block-column:first-child {
+			display: contents;
+		}
+
+		> .wporg-make-front-sidebar {
+			order: 1;
+			margin-top: var(--wp--preset--spacing--40);
+		}
+
+		.wporg-make-latest-activity-intro,
+		.wp-block-wporg-make-latest-activity {
+			order: 2;
+		}
+	}
+}
+
+.wporg-make-front-callout {
+	h2 {
+		line-height: 1.2;
+	}
+
+	p {
+		margin-top: var(--wp--preset--spacing--10);
+		margin-bottom: 0;
+	}
+
+	.is-style-links-list {
+		margin-top: var(--wp--preset--spacing--20);
+		margin-bottom: 0;
+	}
+}
+
 .wporg-make-front-page-intro {
 
 	@media (max-width: 899px) {
@@ -190,5 +292,17 @@
 
 			@extend %make-core-ai-icon;
 		}
+	}
+}
+
+// Keep the callouts in view beside the feed, below the local navigation bar.
+@media (min-width: 877px) and (min-height: 700px) {
+	.wp-block-columns.wporg-make-front-columns > .wporg-make-front-sidebar {
+		$admin-bar: var(--wp-admin--admin-bar--height, 0px);
+		$local-nav: var(--wp--custom--local-navigation-bar--spacing--height, 60px);
+
+		align-self: flex-start;
+		position: sticky;
+		top: calc(#{$admin-bar} + #{$local-nav} + var(--wp--preset--spacing--20));
 	}
 }
