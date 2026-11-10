@@ -22,6 +22,94 @@
 	}
 }
 
+// Team tiles in the main column: 3 across on desktop, 2 on tablets, 1 on phones.
+.wporg-make-team-grid .wp-block-post-template {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--wp--preset--spacing--10);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+
+	@media (max-width: 1100px) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	@media (max-width: 600px) {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.wporg-make-team-card {
+	position: relative;
+	height: 100%;
+	box-sizing: border-box;
+	border: 1px solid var(--wp--preset--color--light-grey-1);
+	border-radius: 2px;
+	transition: border-color 0.1s ease-in-out;
+
+	&:hover,
+	&:focus-within {
+		border-color: var(--wp--preset--color--blueberry-1);
+	}
+
+	// Make the whole tile clickable through the team title link.
+	.wp-block-post-title a::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+	}
+
+	.wp-block-post-content > *:first-child {
+		margin-top: 0;
+	}
+
+	.wp-block-post-content > *:last-child {
+		margin-bottom: 0;
+	}
+}
+
+// On smaller screens, show teams, then the callouts, then Latest activity, so the callouts
+// aren't buried below the feed. Unwrapping the main column lets its blocks and the sidebar
+// share one ordered stack.
+.wp-block-columns.wporg-make-front-columns {
+
+	@media (max-width: 876px) {
+		flex-direction: column;
+
+		> .wp-block-column:first-child {
+			display: contents;
+		}
+
+		> .wporg-make-front-sidebar {
+			order: 1;
+			margin-top: var(--wp--preset--spacing--40);
+		}
+
+		.wporg-make-latest-activity-intro,
+		.wp-block-wporg-make-latest-activity {
+			order: 2;
+		}
+	}
+}
+
+.wporg-make-front-callout {
+
+	h2 {
+		line-height: 1.2;
+	}
+
+	p {
+		margin-top: var(--wp--preset--spacing--10);
+		margin-bottom: 0;
+	}
+
+	.is-style-links-list {
+		margin-top: var(--wp--preset--spacing--20);
+		margin-bottom: 0;
+	}
+}
+
 .wporg-make-front-page-intro {
 
 	@media (max-width: 899px) {
