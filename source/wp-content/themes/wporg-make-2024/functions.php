@@ -104,22 +104,31 @@ function make_setup_theme() {
  * @return array Array of menu items with 'label' and 'url' keys.
  */
 function get_handbook_navigation_menu() {
+	// Match the People link wporg-breathe-2024 adds to the team site's other pages.
+	$people_item = null;
+	if ( function_exists( 'WordPressdotorg\\Make\\Pledges\\get_current_team' ) && \WordPressdotorg\Make\Pledges\get_current_team() ) {
+		$people_item = array(
+			'label' => esc_html__( 'People', 'wporg' ),
+			'url'   => esc_url( home_url( '/pledges/' ) ),
+		);
+	}
+
 	$local_nav_menu_locations = get_nav_menu_locations();
 	$local_nav_menu_object    = isset( $local_nav_menu_locations['primary'] )
 		? wp_get_nav_menu_object( $local_nav_menu_locations['primary'] )
 		: false;
 
 	if ( ! $local_nav_menu_object ) {
-		return array();
+		return $people_item ? array( $people_item ) : array();
 	}
 
 	$menu_items = wp_get_nav_menu_items( $local_nav_menu_object->term_id );
 
 	if ( ! $menu_items || empty( $menu_items ) ) {
-		return array();
+		return $people_item ? array( $people_item ) : array();
 	}
 
-	return array_map(
+	$menu = array_map(
 		function ( $menu_item ) {
 			global $wp;
 			$is_current_page = trailingslashit( $menu_item->url ) === trailingslashit( home_url( $wp->request ) );
@@ -130,9 +139,15 @@ function get_handbook_navigation_menu() {
 				'className' => $is_current_page ? 'current-menu-item' : '',
 			);
 		},
-		// Limit local nav items to 6
-		array_slice( $menu_items, 0, 6 )
+		// Limit local nav items to 6, including People.
+		array_slice( $menu_items, 0, $people_item ? 5 : 6 )
 	);
+
+	if ( $people_item ) {
+		array_unshift( $menu, $people_item );
+	}
+
+	return $menu;
 }
 
 /**
