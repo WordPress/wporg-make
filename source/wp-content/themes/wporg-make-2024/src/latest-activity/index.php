@@ -2,8 +2,8 @@
 /**
  * Block: Latest activity.
  *
- * Shows the newest posts from the Make team blogs the way o2 does, each with
- * its comments, with Newer and Older links over up to MAX_PAGES pages.
+ * Lists the newest posts from the Make team blogs, grouped by day, each with its
+ * team, a summary and who wrote it, with "Load more" over up to MAX_PAGES pages.
  *
  * @package WordPressdotorg\Theme\Make_2024
  */
@@ -47,22 +47,6 @@ const ANCHOR = 'latest-activity';
  * @var string
  */
 const STORE = 'wporg-make/latest-activity';
-
-/**
- * User meta key o2's Follow action stores followed post IDs under (class-o2-follow.php in the wporg mu-plugins).
- *
- * The IDs carry no blog ID, so a post on another blog with the same ID also reads as followed, as it does on o2.
- *
- * @var string
- */
-const FOLLOWING_META_KEY = 'jpflfp2_posts_following';
-
-/**
- * Deepest level comments are nested to, as on o2. Deeper replies continue at this level.
- *
- * @var int
- */
-const COMMENT_DEPTH = 10;
 
 /**
  * Registers the block from its built metadata.
@@ -232,17 +216,14 @@ function render(): string {
 	}
 	$items = array_values( $items );
 
-	enqueue_block_styles( $items );
-	enqueue_content_scripts( $items );
-
 	wp_interactivity_state(
 		STORE,
 		array(
-			/* translators: %s: Time of day. */
-			'yesterday'     => __( 'Yesterday at %s', 'wporg' ),
+			'today'         => __( 'Today', 'wporg' ),
+			'yesterday'     => __( 'Yesterday', 'wporg' ),
+			'loadedMore'    => __( 'More posts loaded.', 'wporg' ),
 			/* translators: 1: Time of day. 2: Date. */
 			'dateTime'      => __( '%1$s on %2$s', 'wporg' ),
-			'loadedMore'    => __( 'More posts loaded.', 'wporg' ),
 			'isAutomatic'   => false,
 			'isLoadingMore' => false,
 			'status'        => '',
@@ -253,149 +234,28 @@ function render(): string {
 }
 
 /**
- * Returns one page's posts with their comments, from the cache when possible.
+ * Returns one page's posts, from the cache when possible.
  *
- * The loaded posts and comments are the same for everyone, so they are cached and shared.
- * The markup is built per request, because Follow links carry a nonce for the viewer.
+ * The loaded posts are the same for everyone, so they are cached and shared.
  *
  * @param int                  $page   Page number.
  * @param array<string, mixed> $result Result of get_activity_page() for the page.
  * @return array<int, array<string, mixed>> Posts from get_items().
  */
 function get_page_items( int $page, array $result ): array {
-	$cache_key = get_cache_key( 'items', $page );
+	$cache_key = get_cache_key( 'list', $page );
 	$cached    = wp_cache_get( $cache_key, CACHE_GROUP );
-	if ( is_array( $cached ) && isset( $cached['items'], $cached['css'] ) ) {
-		add_block_supports_css( (string) $cached['css'] );
-
-		return $cached['items'];
+	if ( is_array( $cached ) ) {
+		return $cached;
 	}
 
 	$items = get_items( $result['rows'], get_allowed_sites() );
 
-	// Rendering the posts added their layout rules to this request's block-supports styles; keep them for cache hits.
-	$css = (string) wp_style_engine_get_stylesheet_from_context( 'block-supports', array( 'prettify' => false ) );
-
 	if ( ! $result['failed'] ) {
-		wp_cache_set(
-			$cache_key,
-			array(
-				'items' => $items,
-				'css'   => $css,
-			),
-			CACHE_GROUP,
-			CACHE_TTL
-		);
+		wp_cache_set( $cache_key, $items, CACHE_GROUP, CACHE_TTL );
 	}
 
 	return $items;
-}
-
-/**
- * Enqueues the stylesheets of the core blocks used in the posts.
- *
- * Rendering a block enqueues its stylesheet, but cached posts aren't rendered again.
- *
- * @param array<int, array<string, mixed>> $items Posts from get_items().
- */
-function enqueue_block_styles( array $items ): void {
-	foreach ( $items as $item ) {
-		foreach ( (array) ( $item['blocks'] ?? array() ) as $name ) {
-			$handle = 'wp-block-' . substr( (string) $name, 5 );
-			if ( str_starts_with( (string) $name, 'core/' ) && wp_style_is( $handle, 'registered' ) ) {
-				wp_enqueue_style( $handle );
-			}
-		}
-	}
-}
-
-/**
- * Enqueues the team blogs' scripts that the posts' markup relies on.
- *
- * Glossary tooltips (wporg-glossary) and code highlighting (code-syntax-block's Prism)
- * come through in the team blogs' rendered HTML, but their scripts are only enqueued
- * there. The plugins' own handles are used when they're registered on the root; otherwise
- * the same files are registered from the shared plugin and theme directories.
- *
- * @param array<int, array<string, mixed>> $items Posts from get_items().
- */
-function enqueue_content_scripts( array $items ): void {
-	$html = '';
-	foreach ( $items as $item ) {
-		$html .= $item['content'] . implode( '', array_column( (array) $item['comments'], 'content' ) );
-	}
-
-	if ( str_contains( $html, 'glossary-item-container' ) ) {
-		enqueue_asset( 'script', 'popper', 'plugins', 'wporg-glossary/js/popper.min.js' );
-		enqueue_asset( 'script', 'tippy', 'plugins', 'wporg-glossary/js/tippy.min.js', array( 'popper' ) );
-		enqueue_asset( 'script', 'glossary-hovercards', 'plugins', 'wporg-glossary/js/glossary-hovercards.js', array( 'jquery', 'hoverintent-js', 'tippy' ) );
-		enqueue_asset( 'style', 'glossary-hovercards', 'plugins', 'wporg-glossary/css/glossary-hovercards.css' );
-	}
-
-	if ( preg_match( '/class="[^"]*\blanguage-/', $html ) ) {
-		$prism = enqueue_asset( 'script', 'mkaz-code-syntax-prism-js', 'plugins', 'code-syntax-block/assets/prism/prism.js' );
-		enqueue_asset( 'style', 'mkaz-code-syntax-prism-css', 'themes', 'pub/wporg-breathe-2024/assets/prism/prism.css' );
-
-		if ( $prism ) {
-			// Prism's autoloader finds language files through this setting, as on the team blogs.
-			wp_add_inline_script( 'mkaz-code-syntax-prism-js', 'var prism_settings = ' . wp_json_encode( array( 'pluginUrl' => plugins_url( 'code-syntax-block/' ) ) ) . ';', 'before' );
-			wp_add_inline_script( 'mkaz-code-syntax-prism-js', 'document.addEventListener( "DOMContentLoaded", function () { Prism.highlightAll(); } );' );
-		}
-	}
-}
-
-/**
- * Enqueues a script or stylesheet, registering it from a file in the shared plugin or theme directory if needed.
- *
- * @param string   $type   "script" or "style".
- * @param string   $handle Handle the owning plugin registers it under.
- * @param string   $root   "plugins" or "themes".
- * @param string   $path   File path relative to that directory.
- * @param string[] $deps   Dependencies, used when registering.
- * @return bool Whether it was enqueued: the file is missing when the plugin or theme isn't installed.
- */
-function enqueue_asset( string $type, string $handle, string $root, string $path, array $deps = array() ): bool {
-	$is_registered = 'script' === $type ? wp_script_is( $handle, 'registered' ) : wp_style_is( $handle, 'registered' );
-
-	if ( ! $is_registered ) {
-		$dir  = 'plugins' === $root ? WP_PLUGIN_DIR : get_theme_root();
-		$file = $dir . '/' . $path;
-		if ( ! is_file( $file ) ) {
-			return false;
-		}
-
-		$url     = 'plugins' === $root ? plugins_url( $path ) : get_theme_root_uri() . '/' . $path;
-		$version = (string) filemtime( $file );
-
-		if ( 'script' === $type ) {
-			wp_register_script( $handle, $url, $deps, $version, array( 'in_footer' => true ) );
-		} else {
-			wp_register_style( $handle, $url, $deps, $version );
-		}
-	}
-
-	if ( 'script' === $type ) {
-		wp_enqueue_script( $handle );
-	} else {
-		wp_enqueue_style( $handle );
-	}
-
-	return true;
-}
-
-/**
- * Adds the cached layout rules of the posts' blocks to the page.
- *
- * @param string $css Block-supports CSS saved when the posts were rendered.
- */
-function add_block_supports_css( string $css ): void {
-	if ( '' === $css ) {
-		return;
-	}
-
-	wp_register_style( 'wporg-make-latest-activity-block-supports', false, array(), '1' );
-	wp_add_inline_style( 'wporg-make-latest-activity-block-supports', $css );
-	wp_enqueue_style( 'wporg-make-latest-activity-block-supports' );
 }
 
 /**
@@ -415,7 +275,6 @@ function render_page( int $from, int $page, bool $has_older, bool $failed, array
 			'id'                    => ANCHOR,
 			'data-wp-interactive'   => STORE,
 			'data-wp-router-region' => 'wporg-make-latest-activity',
-			'data-wp-init'          => 'callbacks.localizeShortcodeTimes',
 		)
 	);
 
@@ -432,15 +291,14 @@ function render_page( int $from, int $page, bool $has_older, bool $failed, array
 		);
 	}
 
-	$user_ids = array_column( $items, 'user_id' );
-	foreach ( $items as $item ) {
-		$user_ids = array_merge( $user_ids, array_column( (array) $item['comments'], 'user_id' ) );
-	}
-	cache_users( array_unique( $user_ids ) );
+	cache_users( array_unique( array_column( $items, 'user_id' ) ) );
 
-	$list = '';
+	$list     = '';
+	$previous = '';
 	foreach ( $items as $item ) {
-		$list .= render_post( $item );
+		$day      = wp_date( 'Y-m-d', get_timestamp( $item ) );
+		$list    .= render_entry( $item, $day !== $previous );
+		$previous = $day;
 	}
 
 	$links = '';
@@ -491,227 +349,126 @@ function render_page( int $from, int $page, bool $has_older, bool $failed, array
 }
 
 /**
- * Renders one post the way o2 does: byline, title, content, actions and comments.
+ * Renders one post as a row of the list, with the heading of its day before it.
  *
- * Reply links to the post on its team blog. Follow is o2's own action, see render_follow_link().
+ * Every row carries a day heading. The server shows the first of each day in the site's
+ * time zone; the view script works out again which to show, in the viewer's time zone
+ * and among the posts of the picked team.
  *
- * @param array<string, mixed> $item Post from get_items().
- * @return string Post markup.
+ * @param array<string, mixed> $item         Post from get_items().
+ * @param bool                 $is_first_day Whether the post is the first of its day in the site's time zone.
+ * @return string Row markup.
  */
-function render_post( array $item ): string {
+function render_entry( array $item, bool $is_first_day ): string {
 	$user = get_userdata( (int) $item['user_id'] );
 	if ( ! $user ) {
 		return '';
 	}
 
-	$url     = (string) $item['url'];
-	$profile = get_profile_url( $user );
-	$count   = count( $item['comments'] );
+	$timestamp = get_timestamp( $item );
+	$url       = (string) $item['url'];
+	$team      = (string) $item['team']['slug'];
 
-	$reply_count = '';
-	if ( $count ) {
-		$reply_count = sprintf( '<span class="wp-block-wporg-make-latest-activity__count">%s</span>', esc_html( number_format_i18n( $count ) ) );
-	}
-
-	$comments = '';
-	if ( $count ) {
-		$comments_id = sprintf( 'latest-activity-comments-%1$s-%2$d', $item['team']['slug'], $item['id'] );
-		$comments    = sprintf(
-			'<footer class="wp-block-wporg-make-latest-activity__footer">
-				<button type="button" class="wp-block-wporg-make-latest-activity__toggle" aria-controls="%1$s" aria-expanded="true" data-wp-bind--aria-expanded="context.isOpen" data-wp-on--click="actions.toggleComments">
-					<span data-wp-bind--hidden="!context.isOpen">%2$s %3$s</span>
-					<span hidden data-wp-bind--hidden="context.isOpen">%4$s %5$s</span>
-				</button>
-			</footer>
-			<div id="%1$s" class="wp-block-wporg-make-latest-activity__comments" data-wp-bind--hidden="!context.isOpen">%6$s</div>',
-			esc_attr( $comments_id ),
-			get_icon( 'collapse' ),
-			esc_html__( 'Hide Comments', 'wporg' ),
-			get_icon( 'expand' ),
-			esc_html__( 'Show Comments', 'wporg' ),
-			render_comments( $item['comments'] )
+	$label = '';
+	if ( '' !== $item['label'] ) {
+		$label = sprintf(
+			'<span class="wp-block-wporg-make-latest-activity__badge">%s</span>',
+			esc_html( (string) $item['label'] )
 		);
 	}
 
-	// The content is the team blog's own rendered HTML, served on the same origin, so it is output as the blog itself would.
-	return sprintf(
-		'<article class="wp-block-wporg-make-latest-activity__item %1$s" %2$s data-wp-key="%18$s" data-wp-init="callbacks.initPost">
-			<header class="wp-block-wporg-make-latest-activity__header">
-				<a class="wp-block-wporg-make-latest-activity__avatar" href="%3$s"><img src="%4$s" alt="" width="50" height="50" loading="lazy" /></a>
-				<a class="wp-block-wporg-make-latest-activity__author" href="%3$s">%5$s</a>
-				<span class="wp-block-wporg-make-latest-activity__date"><a href="%6$s">%7$s</a> · %8$s</span>
-				%10$s
-			</header>
-			<div class="wp-block-wporg-make-latest-activity__content">%11$s</div>
-			<nav class="wp-block-wporg-make-latest-activity__actions" aria-label="%12$s">
-				<a class="wp-block-wporg-make-latest-activity__button" href="%13$s">%14$s%15$s</a>
-				%16$s
-			</nav>
-			%17$s
-		</article>',
-		esc_attr( 'make-' . $item['team']['slug'] ),
-		wp_interactivity_data_wp_context( array( 'isOpen' => true ) ),
-		esc_url( $profile ),
-		esc_url( (string) get_avatar_url( $user->ID, array( 'size' => 100 ) ) ),
-		esc_html( $user->display_name ),
-		esc_url( $item['team']['url'] ),
-		esc_html( $item['team']['name'] ),
-		render_time( $url, (string) $item['date_gmt'] ),
+	// Every post's label sits beside its title, so labels read the same on every row.
+	$title = sprintf(
+		'<div class="wp-block-wporg-make-latest-activity__line"><h4 class="wp-block-wporg-make-latest-activity__title"><a href="%1$s">%2$s</a></h4>%3$s</div>',
 		esc_url( $url ),
-		empty( $item['title_generated'] )
-			? sprintf( '<h2 class="wp-block-wporg-make-latest-activity__title"><a href="%1$s">%2$s</a></h2>', esc_url( $url ), esc_html( (string) $item['title'] ) )
-			: '',
-		$item['content'],
-		esc_attr__( 'Post actions', 'wporg' ),
-		esc_url( $url . '#respond' ),
-		esc_html__( 'Reply', 'wporg' ),
-		$reply_count,
-		render_follow_link( $item ),
-		$comments,
-		esc_attr( $item['team']['slug'] . '-' . $item['id'] )
-	);
-}
-
-/**
- * Renders o2's Follow link for a post, for logged-in viewers on posts open to comments, as o2 does.
- *
- * It points at the team blog with the same query arguments and nonce as o2's own link, so the
- * team blog's o2 Follow handler subscribes the viewer. The nonce is valid there because the
- * network shares the login cookie and nonce salts. Without JavaScript the link still works,
- * and the handler sends the viewer to the post.
- *
- * @param array<string, mixed> $item Post from get_items().
- * @return string Follow link markup, or an empty string.
- */
-function render_follow_link( array $item ): string {
-	if ( ! is_user_logged_in() || empty( $item['comments_open'] ) ) {
-		return '';
-	}
-
-	$post_id   = (int) $item['id'];
-	$following = in_array( $post_id, get_followed_post_ids(), true );
-
-	$url = add_query_arg(
-		array(
-			'post-id' => $post_id,
-			'action'  => $following ? 'post-comment-unsubscribe' : 'post-comment-subscribe',
-		),
-		$item['team']['url']
+		esc_html( (string) $item['title'] ),
+		$label
 	);
 
-	$url = add_query_arg( '_wpnonce', wp_create_nonce( 'post-comment-subscribe-' . $post_id ), $url );
-
-	// Clicking calls the same link with `&ajax`, which o2's handler answers with "1" instead of redirecting, so the viewer stays here.
-	return sprintf(
-		'<a class="wp-block-wporg-make-latest-activity__button%1$s" href="%2$s" %3$s data-wp-bind--href="context.href" data-wp-class--is-following="context.isFollowing" data-wp-on--click="actions.follow">
-			<span data-wp-bind--hidden="context.isFollowing">%4$s</span>
-			<span hidden data-wp-bind--hidden="!context.isFollowing">%5$s</span>
-		</a>',
-		$following ? ' is-following' : '',
-		esc_url( $url ),
-		wp_interactivity_data_wp_context(
-			array(
-				'isFollowing' => $following,
-				'href'        => $url,
-			)
-		),
-		esc_html__( 'Follow', 'wporg' ),
-		esc_html__( 'Following', 'wporg' )
-	);
-}
-
-/**
- * Returns the IDs of the posts the current user follows through o2.
- *
- * @return int[] Post IDs.
- */
-function get_followed_post_ids(): array {
-	return array_map( 'intval', (array) get_user_meta( get_current_user_id(), FOLLOWING_META_KEY, true ) );
-}
-
-/**
- * Renders a post's comments as threads.
- *
- * A reply whose parent is not shown is treated as a top-level comment.
- *
- * @param array<int, array<string, mixed>> $comments Comments, oldest first.
- * @return string Comments markup.
- */
-function render_comments( array $comments ): string {
-	$shown    = array_flip( array_column( $comments, 'id' ) );
-	$children = array();
-
-	foreach ( $comments as $comment ) {
-		$parent                = isset( $shown[ $comment['parent'] ] ) ? $comment['parent'] : 0;
-		$children[ $parent ][] = $comment;
+	$summary = '';
+	if ( '' !== $item['summary'] ) {
+		$summary = sprintf( '<p class="wp-block-wporg-make-latest-activity__summary">%s</p>', esc_html( (string) $item['summary'] ) );
 	}
 
-	return render_comment_level( $children, 0, 1 );
-}
-
-/**
- * Renders the replies to one comment, or the top-level comments.
- *
- * @param array<int, array<int, array<string, mixed>>> $children  Comments grouped by parent ID.
- * @param int                                          $parent_id Parent comment ID, 0 for top-level.
- * @param int                                          $depth     Depth of the comments being rendered.
- * @return string Comments markup.
- */
-function render_comment_level( array $children, int $parent_id, int $depth ): string {
-	$html = '';
-
-	foreach ( $children[ $parent_id ] ?? array() as $comment ) {
-		if ( $depth < COMMENT_DEPTH ) {
-			$html .= render_comment( $comment, render_comment_level( $children, $comment['id'], $depth + 1 ) );
-		} else {
-			$html .= render_comment( $comment, '' ) . render_comment_level( $children, $comment['id'], $depth );
-		}
-	}
-
-	return $html;
-}
-
-/**
- * Renders one comment the way o2 does. Its Reply link points to the comment on the team blog.
- *
- * @param array<string, mixed> $comment Comment from get_post_comments().
- * @param string               $replies Rendered replies, nested under the comment.
- * @return string Comment markup.
- */
-function render_comment( array $comment, string $replies ): string {
-	$user = get_userdata( (int) $comment['user_id'] );
-	if ( ! $user ) {
-		return $replies;
-	}
-
-	$url = (string) $comment['url'];
-
-	if ( $replies ) {
-		$replies = '<div class="wp-block-wporg-make-latest-activity__children">' . $replies . '</div>';
-	}
-
-	return sprintf(
-		'<article class="wp-block-wporg-make-latest-activity__comment">
-			<header class="wp-block-wporg-make-latest-activity__comment-header">
-				<img class="wp-block-wporg-make-latest-activity__comment-avatar" src="%1$s" alt="" width="32" height="32" loading="lazy" />
-				<p class="wp-block-wporg-make-latest-activity__comment-meta"><a class="wp-block-wporg-make-latest-activity__comment-author" href="%2$s">%3$s</a> %4$s</p>
-			</header>
-			<div class="wp-block-wporg-make-latest-activity__comment-content">
-				%5$s
-				<p class="wp-block-wporg-make-latest-activity__comment-actions"><a class="wp-block-wporg-make-latest-activity__comment-reply" href="%6$s">%7$s%8$s</a></p>
-			</div>
-			%9$s
-		</article>',
-		esc_url( (string) get_avatar_url( $user->ID, array( 'size' => 64 ) ) ),
+	$body = sprintf(
+		'%1$s%2$s
+		<p class="wp-block-wporg-make-latest-activity__meta">
+			<img class="wp-block-wporg-make-latest-activity__avatar" src="%3$s" alt="" width="24" height="24" loading="lazy" />
+			<a class="wp-block-wporg-make-latest-activity__author" href="%4$s">%5$s</a>
+			%6$s
+			<span class="wp-block-wporg-make-latest-activity__reading">%7$s</span>
+		</p>',
+		$title,
+		$summary,
+		esc_url( (string) get_avatar_url( $user->ID, array( 'size' => 48 ) ) ),
 		esc_url( get_profile_url( $user ) ),
 		esc_html( $user->display_name ),
-		render_time( $url, (string) $comment['date_gmt'] ),
-		$comment['content'],
-		esc_url( $url ),
-		get_icon( 'reply' ),
-		esc_html__( 'Reply', 'wporg' ),
-		$replies
+		render_time( $timestamp ),
+		esc_html(
+			sprintf(
+				/* translators: %s: Number of minutes. */
+				_n( '%s min read', '%s min read', (int) $item['minutes'], 'wporg' ),
+				number_format_i18n( (int) $item['minutes'] )
+			)
+		)
 	);
+
+	return sprintf(
+		'<div class="wp-block-wporg-make-latest-activity__entry" %1$s data-wp-key="%2$s" data-date="%4$s" data-wp-init="callbacks.localizeDay">
+			<h3 class="wp-block-wporg-make-latest-activity__day"%9$s data-wp-bind--hidden="!context.isFirstOfDay" data-wp-text="context.dayLabel">%5$s</h3>
+			<article class="wp-block-wporg-make-latest-activity__item make-%3$s">
+				<a class="wp-block-wporg-make-latest-activity__team" href="%6$s"><span class="wp-block-wporg-make-latest-activity__team-name">%7$s</span></a>
+				<div class="wp-block-wporg-make-latest-activity__body">%8$s</div>
+			</article>
+		</div>',
+		wp_interactivity_data_wp_context(
+			array(
+				'isFirstOfDay' => $is_first_day,
+				'dayLabel'     => get_day_label( $timestamp ),
+			)
+		),
+		esc_attr( $team . '-' . $item['id'] ),
+		esc_attr( $team ),
+		esc_attr( gmdate( 'c', $timestamp ) ),
+		esc_html( get_day_label( $timestamp ) ),
+		esc_url( (string) $item['team']['url'] ),
+		esc_html( (string) $item['team']['name'] ),
+		$body,
+		$is_first_day ? '' : ' hidden'
+	);
+}
+
+/**
+ * Returns a post's publish time as a Unix timestamp.
+ *
+ * @param array<string, mixed> $item Post from get_items().
+ * @return int Timestamp.
+ */
+function get_timestamp( array $item ): int {
+	return (int) strtotime( $item['date_gmt'] . ' UTC' );
+}
+
+/**
+ * Returns the heading of a day in the site's time zone: "Today", "Yesterday" or the date.
+ *
+ * @param int $timestamp Time in the day.
+ * @return string Day heading.
+ */
+function get_day_label( int $timestamp ): string {
+	$day = wp_date( 'Y-m-d', $timestamp );
+
+	if ( wp_date( 'Y-m-d' ) === $day ) {
+		return __( 'Today', 'wporg' );
+	}
+
+	if ( wp_date( 'Y-m-d', time() - DAY_IN_SECONDS ) === $day ) {
+		return __( 'Yesterday', 'wporg' );
+	}
+
+	/* translators: Date format for day headings in the Latest activity list, see https://www.php.net/manual/datetime.format.php */
+	$format = wp_date( 'Y' ) === wp_date( 'Y', $timestamp ) ? _x( 'l, F j', 'day heading', 'wporg' ) : _x( 'l, F j, Y', 'day heading with year', 'wporg' );
+
+	return wp_date( $format, $timestamp );
 }
 
 /**
@@ -725,36 +482,23 @@ function get_profile_url( \WP_User $user ): string {
 }
 
 /**
- * Renders a linked timestamp in o2's style: "2 hours ago", "Yesterday at 2:33 pm" or "9:22 pm on November 4, 2026".
+ * Renders a post's time of day in the site's time zone; the view script switches it to the viewer's.
  *
- * @param string $url      Link target.
- * @param string $date_gmt Date in GMT, as stored.
- * @return string Timestamp markup.
+ * The day comes from the heading above the post, so only the time is shown.
+ *
+ * @param int $timestamp Publish time.
+ * @return string Time markup.
  */
-function render_time( string $url, string $date_gmt ): string {
-	$timestamp   = (int) strtotime( $date_gmt . ' UTC' );
+function render_time( int $timestamp ): string {
 	$time_format = (string) get_option( 'time_format' );
-	$day         = wp_date( 'Y-m-d', $timestamp );
-
-	if ( wp_date( 'Y-m-d' ) === $day ) {
-		/* translators: %s: Human-readable time difference, such as "2 hours". */
-		$text = sprintf( __( '%s ago', 'wporg' ), human_time_diff( $timestamp ) );
-	} elseif ( wp_date( 'Y-m-d', time() - DAY_IN_SECONDS ) === $day ) {
-		/* translators: %s: Time of day. */
-		$text = sprintf( __( 'Yesterday at %s', 'wporg' ), wp_date( $time_format, $timestamp ) );
-	} else {
-		/* translators: 1: Time of day. 2: Date. */
-		$text = sprintf( __( '%1$s on %2$s', 'wporg' ), wp_date( $time_format, $timestamp ), wp_date( (string) get_option( 'date_format' ), $timestamp ) );
-	}
 
 	/* translators: 1: Time of day. 2: Date. */
-	$title = sprintf( __( '%1$s on %2$s', 'wporg' ), wp_date( $time_format . ' (P)', $timestamp ), wp_date( (string) get_option( 'date_format' ), $timestamp ) );
+	$title = sprintf( __( '%1$s on %2$s', 'wporg' ), wp_date( $time_format . ' (T)', $timestamp ), wp_date( (string) get_option( 'date_format' ), $timestamp ) );
+	$text  = wp_date( $time_format, $timestamp );
 
-	// The text lives in context so the browser can switch it to the viewer's time zone, as o2 does.
 	return sprintf(
-		'<a class="wp-block-wporg-make-latest-activity__time" href="%1$s"><time datetime="%2$s" title="%3$s" %4$s data-wp-text="context.text" data-wp-bind--title="context.title" data-wp-init="callbacks.localizeTime">%5$s</time></a>',
-		esc_url( $url ),
-		esc_attr( mysql_to_rfc3339( $date_gmt ) . 'Z' ),
+		'<time class="wp-block-wporg-make-latest-activity__time" datetime="%1$s" title="%2$s" %3$s data-wp-text="context.text" data-wp-bind--title="context.title" data-wp-init="callbacks.localizeTime">%4$s</time>',
+		esc_attr( gmdate( 'c', $timestamp ) ),
 		esc_attr( $title ),
 		wp_interactivity_data_wp_context(
 			array(
@@ -763,25 +507,5 @@ function render_time( string $url, string $date_gmt ): string {
 			)
 		),
 		esc_html( $text )
-	);
-}
-
-/**
- * Returns a Genericons icon as inline SVG, so the icon font does not have to be loaded.
- *
- * @param string $name Icon name: reply, expand or collapse.
- * @return string SVG markup.
- */
-function get_icon( string $name ): string {
-	$paths = array(
-		'reply'    => 'M1920 832l-640 -640v448h-1024v704l384 384v-704h640v448z',
-		'expand'   => 'M1408 1280l128 -128l-576 -576l-576 576l128 128l448 -448z',
-		'collapse' => 'M1408 640l-448 448l-448 -448l-128 128l576 576l576 -576z',
-	);
-
-	// Font glyphs have their y-axis pointing up, so they are flipped into SVG coordinates.
-	return sprintf(
-		'<svg class="wp-block-wporg-make-latest-activity__icon" viewBox="0 0 2048 2048" width="16" height="16" aria-hidden="true" focusable="false"><path transform="matrix(1 0 0 -1 0 2048)" d="%s" /></svg>',
-		esc_attr( $paths[ $name ] )
 	);
 }

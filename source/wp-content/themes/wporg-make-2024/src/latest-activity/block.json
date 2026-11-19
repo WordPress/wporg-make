@@ -6,14 +6,12 @@
 	"title": "Latest activity",
 	"category": "widgets",
 	"icon": "list-view",
-	"description": "Show the newest posts from the Make team blogs, with their comments.",
+	"description": "List the newest posts from the Make team blogs, grouped by day.",
 	"attributes": {},
 	"supports": {
 		"align": [ "wide" ],
 		"html": false,
-		"interactivity": {
-			"clientNavigation": true
-		},
+		"interactivity": true,
 		"spacing": {
 			"margin": [ "top", "bottom" ]
 		}
