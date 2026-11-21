@@ -243,7 +243,7 @@ function render(): string {
  * @return array<int, array<string, mixed>> Posts from get_items().
  */
 function get_page_items( int $page, array $result ): array {
-	$cache_key = get_cache_key( 'list', $page );
+	$cache_key = get_cache_key( 'entries', $page );
 	$cached    = wp_cache_get( $cache_key, CACHE_GROUP );
 	if ( is_array( $cached ) ) {
 		return $cached;
@@ -397,6 +397,7 @@ function render_entry( array $item, bool $is_first_day ): string {
 			<a class="wp-block-wporg-make-latest-activity__author" href="%4$s">%5$s</a>
 			%6$s
 			<span class="wp-block-wporg-make-latest-activity__reading">%7$s</span>
+			%8$s
 		</p>',
 		$title,
 		$summary,
@@ -410,7 +411,8 @@ function render_entry( array $item, bool $is_first_day ): string {
 				_n( '%s min read', '%s min read', (int) $item['minutes'], 'wporg' ),
 				number_format_i18n( (int) $item['minutes'] )
 			)
-		)
+		),
+		render_comments( $item, $url )
 	);
 
 	return sprintf(
@@ -436,6 +438,56 @@ function render_entry( array $item, bool $is_first_day ): string {
 		$body,
 		$is_first_day ? '' : ' hidden'
 	);
+}
+
+/**
+ * Renders a post's comment count, linked to where the reader can join in.
+ *
+ * Team blogs run o2, which redraws the post in the browser and then scrolls to the
+ * link's anchor. Its comment thread has no anchor of its own, so:
+ *
+ * - Logged in, the link goes to the reply box after the comments ("#respond").
+ * - Logged out, there's no reply box (commenting needs an account), so it goes to the
+ *   first comment instead, or isn't a link when there are none.
+ *
+ * @param array<string, mixed> $item Post from get_items().
+ * @param string               $url  Post URL.
+ * @return string Comment count markup.
+ */
+function render_comments( array $item, string $url ): string {
+	$label  = esc_html( get_comments_label( (int) $item['comments'] ) );
+	$anchor = '';
+
+	if ( is_user_logged_in() ) {
+		$anchor = 'respond';
+	} elseif ( ! empty( $item['first'] ) ) {
+		$anchor = 'comment-' . (int) $item['first'];
+	}
+
+	if ( '' === $anchor ) {
+		return '<span class="wp-block-wporg-make-latest-activity__comments">' . $label . '</span>';
+	}
+
+	return sprintf(
+		'<a class="wp-block-wporg-make-latest-activity__comments" href="%1$s">%2$s</a>',
+		esc_url( $url . '#' . $anchor ),
+		$label
+	);
+}
+
+/**
+ * Returns how many comments a post has, in words.
+ *
+ * @param int $count Number of approved comments.
+ * @return string Comment count, such as "No comments" or "3 comments".
+ */
+function get_comments_label( int $count ): string {
+	if ( 0 === $count ) {
+		return __( 'No comments', 'wporg' );
+	}
+
+	/* translators: %s: Number of comments. */
+	return sprintf( _n( '%s comment', '%s comments', $count, 'wporg' ), number_format_i18n( $count ) );
 }
 
 /**

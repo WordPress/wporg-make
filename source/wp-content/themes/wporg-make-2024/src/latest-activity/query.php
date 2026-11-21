@@ -240,7 +240,7 @@ function get_activity_page( int $page ): array {
  *
  * A change to either makes a new key, so stale pages are never served after one.
  *
- * @param string $kind What is cached: "rows" or "list".
+ * @param string $kind What is cached: "rows" or "posts".
  * @param int    $page Page number.
  * @return string Cache key.
  */
@@ -433,12 +433,37 @@ function load_posts( int $blog_id, array $post_ids, string $team ): array {
 			'title'    => get_title( $post ),
 			'summary'  => get_summary( $post ),
 			'minutes'  => get_reading_minutes( $post->post_content ),
+			'comments' => (int) $post->comment_count,
+			'first'    => $post->comment_count ? get_first_comment_id( $post ) : 0,
 			'label'    => get_post_label( $post, $team ),
 			'url'      => $url,
 		);
 	}
 
 	return $items;
+}
+
+/**
+ * Returns the ID of a post's first approved comment, the top of its thread.
+ *
+ * @param WP_Post $post Post from the current blog.
+ * @return int Comment ID, or 0 when it has none.
+ */
+function get_first_comment_id( WP_Post $post ): int {
+	$ids = get_comments(
+		array(
+			'post_id' => $post->ID,
+			'status'  => 'approve',
+			'type'    => 'comment',
+			'parent'  => 0,
+			'orderby' => 'comment_date_gmt',
+			'order'   => 'ASC',
+			'number'  => 1,
+			'fields'  => 'ids',
+		)
+	);
+
+	return (int) ( $ids[0] ?? 0 );
 }
 
 /**

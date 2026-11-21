@@ -411,6 +411,45 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Each row shows how many approved comments its post has. Logged out, it links to the
+	 * first comment, or not at all when there are none; logged in, to the reply box.
+	 */
+	public function test_shows_comment_count(): void {
+		$this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', time() - HOUR_IN_SECONDS ) ) );
+		$some = $this->create_post( self::$core );
+
+		switch_to_blog( self::$core );
+		$first = self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $some,
+				'comment_date_gmt' => gmdate( 'Y-m-d H:i:s', time() - 2 * HOUR_IN_SECONDS ),
+			)
+		);
+		self::factory()->comment->create( array( 'comment_post_ID' => $some ) );
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $some,
+				'comment_approved' => '0',
+			)
+		);
+		$some_url = get_permalink( $some );
+		restore_current_blog();
+
+		$this->go_to( home_url( '/' ) );
+		$html = render();
+
+		$this->assertStringContainsString( '__comments" href="' . esc_url( $some_url . '#comment-' . $first ) . '">2 comments</a>', $html );
+		$this->assertStringContainsString( '<span class="wp-block-wporg-make-latest-activity__comments">No comments</span>', $html );
+		$this->assertStringNotContainsString( '3 comments', $html );
+
+		wp_set_current_user( self::$author );
+		$html = render();
+
+		$this->assertStringContainsString( '__comments" href="' . esc_url( $some_url . '#respond' ) . '">2 comments</a>', $html );
+		wp_set_current_user( 0 );
+	}
+
+	/**
 	 * Reading time is the word count at 200 words a minute, rounded up, and at least a minute.
 	 */
 	public function test_reading_minutes(): void {

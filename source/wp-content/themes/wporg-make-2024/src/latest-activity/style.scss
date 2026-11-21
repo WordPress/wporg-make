@@ -137,9 +137,23 @@ $muted: var(--wp--preset--color--charcoal-4);
 		}
 	}
 
+	&__comments {
+		color: inherit;
+		text-decoration: none;
+
+		&:hover,
+		&:focus {
+			color: var(--wp--preset--color--blueberry-1);
+			text-decoration: underline;
+		}
+	}
+
 	&__meta &__time::before,
-	&__reading::before {
+	&__reading::before,
+	&__comments::before {
 		content: "·";
+		// Not part of the link's underline.
+		display: inline-block;
 		margin-inline-end: 8px;
 		color: var(--wp--preset--color--light-grey-1);
 	}
