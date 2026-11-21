@@ -1,0 +1,85 @@
+/*
+ * Team icons, shared by the team lists and the Latest activity block.
+ *
+ * Most are Dashicons glyphs; a few are SVG masks from _icons.scss, which must be imported first.
+ */
+
+@use "sass:list";
+
+$make-team-glyphs: (
+	core: "\f475",
+	mobile: "\f470",
+	design: "\f309",
+	accessibility: "\f483",
+	polyglots: "\f326",
+	support: "\f125",
+	themes: "\f100",
+	plugins: "\f106",
+	docs: "\f105",
+	community: "\f307",
+	meta: "\f325",
+	training: "\f118",
+	flow: "\f115",
+	tv: "\f235",
+	marketing: "\f130",
+	media-corps: "\f130",
+	cli: "\f345",
+	hosting: "\f176",
+	tide: "\f10d",
+	photos: "\f306",
+	sustainability: "\f11f",
+);
+
+// Icon box size, and mask size where the SVG needs more room than the default.
+$make-team-masks: (
+	openverse: (24px, 28px),
+	performance: (24px, 28px),
+	playground: (20px, 20px),
+	core-ai: (24px, 24px),
+);
+
+/// Base styles of a team icon, for the rule of the icon's pseudo-element.
+///
+/// @param {String} $fallback Glyph for teams without their own.
+@mixin make-team-icon($fallback: "\f109") {
+	display: block;
+	/* stylelint-disable-next-line font-family-no-missing-generic-family-keyword */
+	font-family: dashicons;
+	content: $fallback;
+	font-weight: 400;
+	font-size: 20px;
+	line-height: inherit;
+	width: 24px;
+	text-align: center;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/// Each team's icon, for the rule of the element that carries the `make-<slug>` class.
+///
+/// @param {String} $icon Selector of the icon pseudo-element, relative to that element.
+@mixin make-team-icon-variants($icon) {
+
+	@each $slug, $glyph in $make-team-glyphs {
+		&.make-#{$slug} #{$icon} {
+			content: $glyph;
+		}
+	}
+
+	@each $slug, $sizes in $make-team-masks {
+		&.make-#{$slug} #{$icon} {
+			font-family: inherit;
+			content: ".";
+			text-indent: -999px;
+			width: 24px;
+			height: list.nth($sizes, 1);
+			mask-repeat: no-repeat;
+			mask-position: center;
+			mask-size: list.nth($sizes, 2);
+			display: inline-block;
+			background-color: currentColor;
+
+			@extend %make-#{$slug}-icon;
+		}
+	}
+}
