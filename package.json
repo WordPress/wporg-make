@@ -11,15 +11,15 @@
 		"@wordpress/stylelint-config": "27.0.0"
 	},
 	"scripts": {
-		"build": "yarn workspaces run build",
-		"build:theme": "yarn workspace wporg-make-2024 build",
-		"lint": "yarn lint:css && yarn lint:js && yarn lint:php",
-		"lint:css": "yarn workspaces run lint:css",
-		"lint:js": "yarn workspaces run lint:js",
+		"build": "npm run build --workspaces",
+		"build:theme": "npm run build -w wporg-make-2024",
+		"lint": "npm run lint:css && npm run lint:js && npm run lint:php",
+		"lint:css": "npm run lint:css --workspaces",
+		"lint:js": "npm run lint:js --workspaces",
 		"lint:php": "composer lint ./source/wp-content/themes/wporg-make-2024",
-		"setup:tools": "yarn && composer install && TEXTDOMAIN=wporg composer exec update-configs",
+		"setup:tools": "npm install && composer install && TEXTDOMAIN=wporg composer exec update-configs",
 		"setup:wp": "wp-env run cli bash env/setup.sh",
-		"start:theme": "yarn workspace wporg-make-2024 start",
+		"start:theme": "npm run start -w wporg-make-2024",
 		"test:php": "wp-env run tests-cli --env-cwd=/var/www/html/ ./vendor/bin/phpunit",
 		"update:tools": "composer update && TEXTDOMAIN=wporg composer exec update-configs",
 		"wp-env": "wp-env"
@@ -27,7 +27,7 @@
 	"workspaces": [
 		"source/wp-content/themes/wporg-make-2024"
 	],
-	"resolutions": {
+	"overrides": {
 		"serialize-javascript": "^7.0.5"
 	}
 }
