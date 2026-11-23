@@ -10,13 +10,12 @@ declare( strict_types = 1 );
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_activity_page;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_allowed_sites;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_items;
+use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_reading_minutes;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\get_redirect_url;
-use function WordPressdotorg\Theme\Make_2024\Latest_Activity\remove_o2_post_actions;
 use function WordPressdotorg\Theme\Make_2024\Latest_Activity\render;
-use function WordPressdotorg\Theme\Make_2024\Latest_Activity\use_local_layout_classes;
 
 /**
- * Covers which blogs, posts and comments appear, paging across blogs, and the rendered markup.
+ * Covers which blogs and posts appear, paging across blogs, and the rendered list.
  *
  * @group latest-activity
  */
@@ -152,8 +151,7 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	 * @param string $kind Kind of ineligible content to create.
 	 */
 	public function test_excludes_ineligible_content( string $kind ): void {
-		$control         = $this->create_post( self::$core );
-		$control_comment = $this->create_comment( self::$core, $control );
+		$control = $this->create_post( self::$core );
 
 		switch ( $kind ) {
 			case 'private post':
@@ -178,39 +176,14 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 				$ineligible = 'post:' . $this->create_post( self::$core, array( 'post_author' => $spammer ) );
 				break;
 
-			case 'unapproved comment':
-				$ineligible = 'comment:' . $this->create_comment( self::$core, $control, array( 'comment_approved' => '0' ) );
-				break;
-
-			case 'pingback':
-				$ineligible = 'comment:' . $this->create_comment( self::$core, $control, array( 'comment_type' => 'pingback' ) );
-				break;
-
-			case 'xcomment':
-				$comment_id = $this->create_comment( self::$core, $control );
-				switch_to_blog( self::$core );
-				add_comment_meta( $comment_id, 'xcomment_origin', self::$design . ':1' );
-				restore_current_blog();
-				$ineligible = 'comment:' . $comment_id;
-				break;
-
-			case 'comment by a spam author':
-				$spammer = self::factory()->user->create();
-				$this->mark_user_as_spam( $spammer );
-				$ineligible = 'comment:' . $this->create_comment( self::$core, $control, array( 'user_id' => $spammer ) );
-				break;
 		}
 
 		$shown = array();
 		foreach ( get_items( get_activity_page( 1 )['rows'], get_allowed_sites() ) as $item ) {
 			$shown[] = 'post:' . $item['id'];
-			foreach ( $item['comments'] as $comment ) {
-				$shown[] = 'comment:' . $comment['id'];
-			}
 		}
 
 		$this->assertContains( 'post:' . $control, $shown );
-		$this->assertContains( 'comment:' . $control_comment, $shown );
 		$this->assertNotContains( $ineligible, $shown );
 	}
 
@@ -221,14 +194,10 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	 */
 	public function data_ineligible_content(): array {
 		return array(
-			'private post'             => array( 'private post' ),
-			'password-protected post'  => array( 'password-protected post' ),
-			'xpost'                    => array( 'xpost' ),
-			'post by a spam author'    => array( 'post by a spam author' ),
-			'unapproved comment'       => array( 'unapproved comment' ),
-			'pingback'                 => array( 'pingback' ),
-			'xcomment'                 => array( 'xcomment' ),
-			'comment by a spam author' => array( 'comment by a spam author' ),
+			'private post'            => array( 'private post' ),
+			'password-protected post' => array( 'password-protected post' ),
+			'xpost'                   => array( 'xpost' ),
+			'post by a spam author'   => array( 'post by a spam author' ),
 		);
 	}
 
@@ -301,7 +270,7 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 		$this->go_to( home_url( '/?activity-page=2&activity-from=1' ) );
 		$html = render();
 
-		$this->assertSame( 20, substr_count( $html, '<article class="wp-block-wporg-make-latest-activity__item ' ) );
+		$this->assertSame( 20, substr_count( $html, '<article class="wp-block-wporg-make-latest-activity__item' ) );
 		$this->assertStringContainsString( 'href="' . esc_url( home_url( '/?activity-page=3#latest-activity' ) ) . '"', $html );
 		$this->assertStringContainsString( 'data-range="' . esc_url( home_url( '/?activity-page=3&activity-from=1' ) ) . '"', $html );
 	}
@@ -324,7 +293,7 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 		$_GET['activity-from'] = '1';
 		$html                  = render();
 		unset( $_GET['activity-page'], $_GET['activity-from'] );
-		preg_match_all( '/<article [^>]*data-wp-key="([^"]+)"/', $html, $keys );
+		preg_match_all( '/__entry"[^>]*data-wp-key="([^"]+)"/', $html, $keys );
 
 		$this->assertSame( 15, count( array_unique( $keys[1] ) ) );
 		$this->assertSame( array_values( array_unique( $keys[1] ) ), $keys[1] );
@@ -375,30 +344,159 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Posts render their content as the team blog would, titles are escaped, and replies nest under their
-	 * comment with a Reply link to that reply on the team blog.
+	 * Rows link the post and its team, escape the title, and summarize the content as plain text.
 	 *
 	 * Known shortcodes lose their tags but keep what they enclose; bracketed words that aren't shortcodes stay.
+	 * Code is left out of the summary.
 	 */
 	public function test_render_links_and_escapes_items(): void {
-		$post_id    = $this->create_post(
+		$post_id = $this->create_post(
 			self::$core,
 			array(
 				'post_title'   => 'Ship <script>alert(1)</script> it',
-				'post_content' => '<!-- wp:paragraph --><p>[Proposal] Release [caption id="1"]notes[/caption] are up.</p><!-- /wp:paragraph -->',
+				'post_excerpt' => '',
+				'post_content' => '<!-- wp:paragraph --><p>[Proposal] Release [caption id="1"]notes[/caption] are up.</p><!-- /wp:paragraph --><!-- wp:code --><pre class="wp-block-code"><code>secret_code();</code></pre><!-- /wp:code -->',
 			)
 		);
-		$comment_id = $this->create_comment( self::$core, $post_id );
-		$reply_id   = $this->create_comment( self::$core, $post_id, array( 'comment_parent' => $comment_id ) );
 
 		$this->go_to( home_url( '/' ) );
 		$html = render();
 
-		$reply_link = preg_quote( esc_url( get_blog_permalink( self::$core, $post_id ) . '#comment-' . $reply_id ), '/' );
-
 		$this->assertStringNotContainsString( '<script>', $html );
-		$this->assertStringContainsString( '>[Proposal] Release notes are up.</p>', $html );
-		$this->assertMatchesRegularExpression( '/__children">.*__comment-reply" href="' . $reply_link . '"/s', $html );
+		$this->assertStringContainsString( 'href="' . esc_url( get_blog_permalink( self::$core, $post_id ) ) . '"', $html );
+		$this->assertStringContainsString( '__team" href="' . esc_url( get_allowed_sites()[ self::$core ]['url'] ) . '"><span class="wp-block-wporg-make-latest-activity__team-name">Core</span></a>', $html );
+		$this->assertStringContainsString( '__summary">[Proposal] Release notes are up.</p>', $html );
+		$this->assertStringNotContainsString( 'secret_code', $html );
+	}
+
+	/**
+	 * Labels come from tags, categories and titles, and every post keeps its summary.
+	 *
+	 * @dataProvider data_post_kinds
+	 *
+	 * @param string   $blog    "core" or "updates".
+	 * @param string   $title   Post title.
+	 * @param string[] $tags    Tag slugs.
+	 * @param string   $label   Expected label.
+	 */
+	public function test_labels_posts_by_kind( string $blog, string $title, array $tags, string $label ): void {
+		$blog_id = 'updates' === $blog ? self::$updates : self::$core;
+		$post_id = $this->create_post( $blog_id, array( 'post_title' => $title ) );
+		switch_to_blog( $blog_id );
+		wp_set_post_tags( $post_id, $tags );
+		restore_current_blog();
+
+		$items = get_items( get_activity_page( 1 )['rows'], get_allowed_sites() );
+		$item  = current( wp_list_filter( $items, array( 'id' => $post_id ) ) );
+
+		$this->assertSame( $label, $item['label'] );
+		$this->assertNotSame( '', $item['summary'] );
+	}
+
+	/**
+	 * Data provider: posts of each kind.
+	 *
+	 * @return array<string, array{string, string, string[], string}>
+	 */
+	public function data_post_kinds(): array {
+		return array(
+			'dev note by tag'             => array( 'core', 'Media changes in 7.2', array( 'dev-notes' ), 'Dev note' ),
+			'call for testing by title'   => array( 'core', 'Call for testing: Xdebug', array(), 'Call for testing' ),
+			'label wins over meeting tag' => array( 'core', 'Help Test WordPress 7.2', array( 'meetings' ), 'Call for testing' ),
+			'agenda by tag'               => array( 'core', 'Dev Chat, November 17', array( 'agenda' ), 'Agenda' ),
+			'meeting notes by title'      => array( 'core', 'Training Team Meeting Recap', array(), 'Meeting notes' ),
+			'summary outside a meeting'   => array( 'core', 'Summary of the survey', array(), '' ),
+			'team update by blog'         => array( 'updates', 'Themes team update', array(), 'Team update' ),
+			'plain post'                  => array( 'core', 'Introducing a new theme', array(), '' ),
+		);
+	}
+
+	/**
+	 * Each row shows how many approved comments its post has. Logged out, it links to the
+	 * first comment, or not at all when there are none; logged in, to the reply box.
+	 *
+	 * Pingbacks, o2 xcomments and comments by spam users neither count nor become the first comment.
+	 */
+	public function test_shows_comment_count(): void {
+		$none    = $this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', time() - HOUR_IN_SECONDS ) ) );
+		$some    = $this->create_post( self::$core );
+		$spammer = self::factory()->user->create();
+		$this->mark_user_as_spam( $spammer );
+
+		switch_to_blog( self::$core );
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $none,
+				'comment_type'    => 'pingback',
+			)
+		);
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $some,
+				'user_id'          => $spammer,
+				'comment_date_gmt' => gmdate( 'Y-m-d H:i:s', time() - 3 * HOUR_IN_SECONDS ),
+			)
+		);
+		$xcomment = self::factory()->comment->create( array( 'comment_post_ID' => $some ) );
+		add_comment_meta( $xcomment, 'xcomment_origin', self::$design . ':1' );
+		$first = self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $some,
+				'comment_date_gmt' => gmdate( 'Y-m-d H:i:s', time() - 2 * HOUR_IN_SECONDS ),
+			)
+		);
+		self::factory()->comment->create( array( 'comment_post_ID' => $some ) );
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $some,
+				'comment_approved' => '0',
+			)
+		);
+		$some_url = get_permalink( $some );
+		restore_current_blog();
+
+		$this->go_to( home_url( '/' ) );
+		$html = render();
+
+		$this->assertStringContainsString( '__comments" href="' . esc_url( $some_url . '#comment-' . $first ) . '">2 comments</a>', $html );
+		$this->assertStringContainsString( '<span class="wp-block-wporg-make-latest-activity__comments">No comments</span>', $html );
+		$this->assertStringNotContainsString( '3 comments', $html );
+
+		wp_set_current_user( self::$author );
+		$html = render();
+
+		$this->assertStringContainsString( '__comments" href="' . esc_url( $some_url . '#respond' ) . '">2 comments</a>', $html );
+		wp_set_current_user( 0 );
+	}
+
+	/**
+	 * Reading time is the word count at 200 words a minute, rounded up, and at least a minute.
+	 */
+	public function test_reading_minutes(): void {
+		$this->assertSame( 1, get_reading_minutes( '' ) );
+		$this->assertSame( 1, get_reading_minutes( '<p>' . str_repeat( 'word ', 200 ) . '</p>' ) );
+		$this->assertSame( 2, get_reading_minutes( '<p>' . str_repeat( 'word ', 201 ) . '</p>' ) );
+	}
+
+	/**
+	 * Each day's first post shows the day's heading, and later posts that day hide theirs.
+	 */
+	public function test_groups_by_day(): void {
+		// Fixed hours, so the two posts two days ago share a day whenever the test runs.
+		$now = time();
+		$this->create_post( self::$design, array( 'post_date_gmt' => gmdate( 'Y-m-d 12:00:00', $now - 2 * DAY_IN_SECONDS ) ) );
+		$this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d 11:00:00', $now - 2 * DAY_IN_SECONDS ) ) );
+		$this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d 12:00:00', $now - 4 * DAY_IN_SECONDS ) ) );
+
+		$this->go_to( home_url( '/' ) );
+		$tags = new WP_HTML_Tag_Processor( render() );
+
+		$hidden = array();
+		while ( $tags->next_tag( array( 'class_name' => 'wp-block-wporg-make-latest-activity__day' ) ) ) {
+			$hidden[] = null !== $tags->get_attribute( 'hidden' );
+		}
+
+		$this->assertSame( array( false, true, false ), $hidden );
 	}
 
 	/**
@@ -423,103 +521,6 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	}
 
 	/**
-	 * The "Login to Reply" and To-do bar is removed from team-blog HTML as o2 prints it, while o2's tag line stays.
-	 */
-	public function test_removes_o2_post_actions(): void {
-		// Markup as o2's modules/post-actions/load.php prints it, single quotes included.
-		$html = "<p>Body</p><nav class='o2-post-footer-actions'><ul class='o2-post-footer-action-row'><li class='o2-post-footer-action'><a href='#'>Login to Reply</a></li></ul><div class='o2-post-footer-action-likes'></div><ul class='o2-post-footer-action-row'><li class='o2-post-footer-action'><span class=\"o2-resolve-wrap\"><a href=\"#\" class=\"o2-resolve-link\" data-action=\"resolvedposts\">To-do</a><ul></ul></span></li></ul></nav><p class=\"o2-appended-tags\">#core</p>";
-
-		$this->assertSame( '<p>Body</p><p class="o2-appended-tags">#core</p>', remove_o2_post_actions( $html ) );
-	}
-
-	/**
-	 * A team blog's layout classes are swapped for the root's, whose CSS the root prints, but only when the blocks pair up.
-	 *
-	 * @dataProvider data_layout_classes
-	 *
-	 * @param string      $remote   Post HTML from the team blog.
-	 * @param string      $local    The same post rendered on the root.
-	 * @param string|null $expected Expected HTML, or null when the renderings don't pair up.
-	 */
-	public function test_uses_local_layout_classes( string $remote, string $local, ?string $expected ): void {
-		$this->assertSame( $expected, use_local_layout_classes( $remote, $local ) );
-	}
-
-	/**
-	 * Team blog and root renderings of a post.
-	 *
-	 * @return array<string, array{0: string, 1: string, 2: string|null}>
-	 */
-	public function data_layout_classes(): array {
-		return array(
-			'matching blocks'  => array(
-				'<div class="wp-block-group wp-container-core-group-is-layout-37dd22d4"><p class="wp-elements-aa11">wp-container-core-group-is-layout-37dd22d4</p></div>',
-				'<div class="wp-block-group wp-container-core-group-is-layout-1eb3483f"><p class="wp-elements-bb22">wp-container-core-group-is-layout-37dd22d4</p></div>',
-				'<div class="wp-block-group wp-container-core-group-is-layout-1eb3483f"><p class="wp-elements-bb22">wp-container-core-group-is-layout-37dd22d4</p></div>',
-			),
-			'different blocks' => array(
-				'<div class="wp-container-core-group-is-layout-37dd22d4"></div><div class="wp-container-core-columns-is-layout-0a0a0a0a"></div>',
-				'<div class="wp-container-core-columns-is-layout-48e007ce"></div><div class="wp-container-core-group-is-layout-1eb3483f"></div>',
-				null,
-			),
-		);
-	}
-
-	/**
-	 * SyntaxHighlighter code shortcodes show as preformatted code when rendered locally, not as raw shortcode text.
-	 */
-	public function test_renders_code_shortcodes_as_code(): void {
-		$post_id = $this->create_post( self::$core );
-		$this->create_comment( self::$core, $post_id, array( 'comment_content' => "Try this:\n\n[code]add_action( &#039;init&#039;, &#039;x&#039; );[/code]" ) );
-
-		$this->go_to( home_url( '/' ) );
-
-		$this->assertStringContainsString( '<pre><code>add_action( &#039;init&#039;, &#039;x&#039; );</code></pre>', render() );
-	}
-
-	/**
-	 * @mentions of real users link to their profiles with Jetpack Mentions' markup; anything else stays as typed.
-	 */
-	public function test_links_mentions_of_users(): void {
-		self::factory()->user->create( array( 'user_login' => 'jdoe' ) );
-		$this->create_post(
-			self::$core,
-			array( 'post_content' => '<p>Props @jdoe, @nobody-here and mail@jdoe.example for <code>@jdoe</code>.</p>' )
-		);
-
-		$this->go_to( home_url( '/' ) );
-		$html = render();
-
-		$this->assertStringContainsString( 'Props <a href="https://profiles.wordpress.org/jdoe/" class="mention"><span class="mentions-prefix">@</span>jdoe</a>, @nobody-here and mail@jdoe.example for <code>@jdoe</code>.', $html );
-	}
-
-	/**
-	 * Follow uses o2's own link, with its query arguments and nonce, and only for logged-in viewers as on o2.
-	 *
-	 * A link without the nonce, or one pointing at the root, would do nothing on the team blog.
-	 */
-	public function test_follow_link_matches_o2(): void {
-		$post_id = $this->create_post( self::$core );
-
-		$this->go_to( home_url( '/' ) );
-		$this->assertStringNotContainsString( 'post-comment-subscribe', render() );
-
-		wp_set_current_user( self::$author );
-		$expected = wp_nonce_url(
-			add_query_arg(
-				array(
-					'post-id' => $post_id,
-					'action'  => 'post-comment-subscribe',
-				),
-				get_allowed_sites()[ self::$core ]['url']
-			),
-			'post-comment-subscribe-' . $post_id
-		);
-
-		$this->assertStringContainsString( 'href="' . esc_url( $expected ) . '"', render() );
-	}
-
-	/**
 	 * Creates a published post on a blog.
 	 *
 	 * @param int                  $blog_id Blog ID.
@@ -531,31 +532,6 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 
 		try {
 			return self::factory()->post->create( $args + array( 'post_author' => self::$author ) );
-		} finally {
-			restore_current_blog();
-		}
-	}
-
-	/**
-	 * Creates an approved comment by the test author on a blog.
-	 *
-	 * @param int                  $blog_id Blog ID.
-	 * @param int                  $post_id Post ID.
-	 * @param array<string, mixed> $args    Comment arguments.
-	 * @return int Comment ID.
-	 */
-	private function create_comment( int $blog_id, int $post_id, array $args = array() ): int {
-		switch_to_blog( $blog_id );
-
-		try {
-			return self::factory()->comment->create(
-				$args + array(
-					'comment_post_ID'  => $post_id,
-					'user_id'          => self::$author,
-					'comment_approved' => '1',
-					'comment_type'     => 'comment',
-				)
-			);
 		} finally {
 			restore_current_blog();
 		}
