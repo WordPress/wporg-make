@@ -354,6 +354,7 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 			self::$core,
 			array(
 				'post_title'   => 'Ship <script>alert(1)</script> it',
+				'post_excerpt' => '',
 				'post_content' => '<!-- wp:paragraph --><p>[Proposal] Release [caption id="1"]notes[/caption] are up.</p><!-- /wp:paragraph --><!-- wp:code --><pre class="wp-block-code"><code>secret_code();</code></pre><!-- /wp:code -->',
 			)
 		);
@@ -363,7 +364,7 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 
 		$this->assertStringNotContainsString( '<script>', $html );
 		$this->assertStringContainsString( 'href="' . esc_url( get_blog_permalink( self::$core, $post_id ) ) . '"', $html );
-		$this->assertStringContainsString( '__team" href="' . esc_url( get_allowed_sites()[ self::$core ]['url'] ) . '">Core</a>', $html );
+		$this->assertStringContainsString( '__team" href="' . esc_url( get_allowed_sites()[ self::$core ]['url'] ) . '"><span class="wp-block-wporg-make-latest-activity__team-name">Core</span></a>', $html );
 		$this->assertStringContainsString( '__summary">[Proposal] Release notes are up.</p>', $html );
 		$this->assertStringNotContainsString( 'secret_code', $html );
 	}
@@ -462,16 +463,19 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	 * Each day's first post shows the day's heading, and later posts that day hide theirs.
 	 */
 	public function test_groups_by_day(): void {
+		// Fixed hours, so the two posts two days ago share a day whenever the test runs.
 		$now = time();
-		$this->create_post( self::$design, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', $now - 2 * DAY_IN_SECONDS ) ) );
-		$this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', $now - 2 * DAY_IN_SECONDS - HOUR_IN_SECONDS ) ) );
-		$this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', $now - 4 * DAY_IN_SECONDS ) ) );
+		$this->create_post( self::$design, array( 'post_date_gmt' => gmdate( 'Y-m-d 12:00:00', $now - 2 * DAY_IN_SECONDS ) ) );
+		$this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d 11:00:00', $now - 2 * DAY_IN_SECONDS ) ) );
+		$this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d 12:00:00', $now - 4 * DAY_IN_SECONDS ) ) );
 
 		$this->go_to( home_url( '/' ) );
-		$html = render();
+		$tags = new WP_HTML_Tag_Processor( render() );
 
-		preg_match_all( '/<h3 ([^>]*)__day"/', $html, $headings );
-		$hidden = array_map( static fn( string $attributes ): bool => str_contains( $attributes, 'hidden' ), $headings[1] );
+		$hidden = array();
+		while ( $tags->next_tag( array( 'class_name' => 'wp-block-wporg-make-latest-activity__day' ) ) ) {
+			$hidden[] = null !== $tags->get_attribute( 'hidden' );
+		}
 
 		$this->assertSame( array( false, true, false ), $hidden );
 	}
