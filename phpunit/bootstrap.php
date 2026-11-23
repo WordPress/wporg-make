@@ -2,7 +2,8 @@
 /**
  * PHPUnit bootstrap file.
  *
- * Runs inside the wp-env tests container, where this directory is mapped into the WordPress root.
+ * Runs in the wp-env tests container, where this directory is mapped into the WordPress root,
+ * and in CI on the runner, where .github/wp-tests-config.php points WordPress at this repository.
  *
  * @package WordPressdotorg\Theme\Make_2024
  */
@@ -16,13 +17,19 @@ if ( ! $_tests_dir ) {
 	$_tests_dir = rtrim( sys_get_temp_dir(), '/\\' ) . '/wordpress-tests-lib';
 }
 
+// The WP test suite reads this as a constant, so bridge it from the environment the workflow sets.
+$_config_file = getenv( 'WP_TESTS_CONFIG_FILE_PATH' );
+if ( is_string( $_config_file ) && '' !== $_config_file && ! defined( 'WP_TESTS_CONFIG_FILE_PATH' ) ) {
+	define( 'WP_TESTS_CONFIG_FILE_PATH', $_config_file );
+}
+
 require_once $_tests_dir . '/includes/functions.php';
 
 tests_add_filter(
 	'muplugins_loaded',
 	static function (): void {
-		require dirname( __DIR__ ) . '/wp-content/plugins/wporg-make-sites-cpt/make_sites_cpt.php';
-		require dirname( __DIR__ ) . '/wp-content/themes/wporg-make-2024/src/latest-activity/index.php';
+		require WP_CONTENT_DIR . '/plugins/wporg-make-sites-cpt/make_sites_cpt.php';
+		require WP_CONTENT_DIR . '/themes/wporg-make-2024/src/latest-activity/index.php';
 	}
 );
 
