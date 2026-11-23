@@ -23,13 +23,14 @@ jobs:
               uses: WordPress/wporg-repo-tools/.github/actions/setup@trunk
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
+                  packageManager: npm
 
             # The sandbox stub is mounted inside the mapped mu-plugins folder. Without its mount point,
             # the containers race to create it on start, and the loser fails with "file exists".
             - name: Start the WordPress environment
               run: |
                   touch source/wp-content/mu-plugins/0-sandbox.php
-                  yarn wp-env start
+                  npm run wp-env start
 
             - name: Run PHP unit tests
-              run: yarn test:php
+              run: npm run test:php
