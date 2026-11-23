@@ -6,6 +6,9 @@ on:
         branches: [ trunk ]
     workflow_dispatch:
 
+permissions:
+    contents: read
+
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -14,23 +17,121 @@ jobs:
     phpunit:
         name: PHPUnit
         runs-on: ubuntu-latest
-        timeout-minutes: 30
+        timeout-minutes: 15
+
+        # Runs PHPUnit on the runner instead of in wp-env, which takes over a minute to start.
+        env:
+            WP_CORE_DIR: /tmp/wordpress
+            WP_TESTS_DIR: /tmp/wordpress-develop/tests/phpunit
+            WP_TESTS_CONFIG_FILE_PATH: ${{ github.workspace }}/.github/wp-tests-config.php
+
         steps:
-            - uses: actions/checkout@v4
-
-            # Installs dependencies and builds the theme; the tests register the built block.
-            - name: Setup
-              uses: WordPress/wporg-repo-tools/.github/actions/setup@trunk
+            - name: Checkout repository
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  packageManager: npm
+                  persist-credentials: false
 
-            # The sandbox stub is mounted inside the mapped mu-plugins folder. Without its mount point,
-            # the containers race to create it on start, and the loser fails with "file exists".
-            - name: Start the WordPress environment
+            # Starts while the dependencies are restored; "Create the test database" waits for it.
+            - name: Start MySQL
+              run: sudo systemctl start --no-block mysql
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2.37.2
+              with:
+                  php-version: '8.4'
+                  coverage: none
+              env:
+                  COMPOSER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            # Shared with linters.yml: keep the paths and key identical so both workflows hit the same entry.
+            - name: Cache Composer dependencies
+              id: composer
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: |
+                      vendor
+                      source/wp-content/mu-plugins/pub
+                      source/wp-content/mu-plugins/wporg-mu-plugins
+                      source/wp-content/plugins
+                      source/wp-content/themes/wporg-parent-2021
+                  key: composer-${{ runner.os }}-${{ hashFiles( 'composer.json', 'composer.lock' ) }}
+
+            # Three packages are checked out from meta.svn, so only a cache miss needs Subversion.
+            # The wporg/* build branches are force-pushed, so a locked commit can disappear; update them when it has.
+            - name: Install Composer dependencies
+              if: steps.composer.outputs.cache-hit != 'true'
               run: |
-                  touch source/wp-content/mu-plugins/0-sandbox.php
-                  npm run wp-env start
+                  command -v svn > /dev/null || sudo apt-get install -y -qq subversion > /dev/null
+                  composer install --no-interaction --no-progress || composer update --no-interaction --no-progress 'wporg/*'
+
+            - name: Get date
+              id: date
+              run: echo "date=$( date -u +%Y%m%d )" >> "$GITHUB_OUTPUT"
+
+            # wp-env tests against WordPress trunk, so both come from trunk: the nightly build as the
+            # install, and a sparse checkout of wordpress-develop for the matching PHPUnit library.
+            - name: Cache WordPress
+              id: wordpress
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: |
+                      /tmp/wordpress
+                      /tmp/wordpress-develop
+                  key: wordpress-nightly-${{ steps.date.outputs.date }}
+
+            - name: Install WordPress
+              if: steps.wordpress.outputs.cache-hit != 'true'
+              run: |
+                  ( curl -sSfL https://wordpress.org/nightly-builds/wordpress-latest.zip -o /tmp/wordpress.zip && unzip -q /tmp/wordpress.zip -d /tmp ) &
+                  core_pid=$!
+                  ( git clone --quiet --depth=1 --filter=blob:none --sparse https://github.com/WordPress/wordpress-develop /tmp/wordpress-develop && git -C /tmp/wordpress-develop sparse-checkout set tests/phpunit/includes tests/phpunit/data ) &
+                  tests_pid=$!
+                  # Wait on each PID: a bare `wait` returns 0 even when a job failed, which would cache a half-populated /tmp.
+                  wait "$core_pid"
+                  wait "$tests_pid"
+
+            # The tests register the block from its build, so a cache hit skips npm entirely.
+            - name: Cache theme build
+              id: theme-build
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: source/wp-content/themes/wporg-make-2024/build
+                  key: theme-build-${{ runner.os }}-${{ hashFiles( '.nvmrc', 'package-lock.json', 'source/wp-content/themes/wporg-make-2024/package.json', 'source/wp-content/themes/wporg-make-2024/src/**' ) }}
+
+            - name: Install NodeJS
+              if: steps.theme-build.outputs.cache-hit != 'true'
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+              with:
+                  node-version-file: .nvmrc
+                  package-manager-cache: false
+
+            # Shared with linters.yml: keep the paths and key identical so both workflows hit the same entry.
+            - name: Cache node_modules
+              id: node-modules
+              if: steps.theme-build.outputs.cache-hit != 'true'
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: |
+                      node_modules
+                      source/wp-content/themes/wporg-make-2024/node_modules
+                  key: node-modules-${{ runner.os }}-${{ hashFiles( '.nvmrc', 'package-lock.json' ) }}
+
+            - name: Install npm dependencies
+              if: steps.theme-build.outputs.cache-hit != 'true' && steps.node-modules.outputs.cache-hit != 'true'
+              run: npm ci --ignore-scripts --no-audit --no-fund
+
+            - name: Build theme
+              if: steps.theme-build.outputs.cache-hit != 'true'
+              run: npm run build:theme
+
+            # wp-env maps this stub into mu-plugins, where it loads wporg-mu-plugins.
+            - name: Load the sandbox stub
+              run: cp env/0-sandbox.php source/wp-content/mu-plugins/0-sandbox.php
+
+            - name: Create the test database
+              run: |
+                  sudo systemctl start mysql
+                  mysql -uroot -proot -h127.0.0.1 -e "CREATE DATABASE wordpress_test;"
 
             - name: Run PHP unit tests
-              run: npm run test:php
+              run: vendor/bin/phpunit
