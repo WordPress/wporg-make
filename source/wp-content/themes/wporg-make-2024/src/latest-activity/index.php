@@ -352,8 +352,7 @@ function render_page( int $from, int $page, bool $has_older, bool $failed, array
  * Renders one post as a row of the list, with the heading of its day before it.
  *
  * Every row carries a day heading. The server shows the first of each day in the site's
- * time zone; the view script works out again which to show, in the viewer's time zone
- * and among the posts of the picked team.
+ * time zone; the view script works out again which to show, in the viewer's time zone.
  *
  * @param array<string, mixed> $item         Post from get_items().
  * @param bool                 $is_first_day Whether the post is the first of its day in the site's time zone.

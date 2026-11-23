@@ -240,7 +240,7 @@ function get_activity_page( int $page ): array {
  *
  * A change to either makes a new key, so stale pages are never served after one.
  *
- * @param string $kind What is cached: "rows" or "posts".
+ * @param string $kind What is cached: "rows" or "entries".
  * @param int    $page Page number.
  * @return string Cache key.
  */
@@ -525,7 +525,7 @@ function get_post_label( WP_Post $post, string $team ): string {
 	$title = wp_strip_all_tags( $post->post_title );
 
 	/**
-	 * Filters the labels shown above posts, checked in order. The first that matches wins.
+	 * Filters the labels shown beside post titles, checked in order. The first that matches wins.
 	 *
 	 * Each has a label, the tag or category slugs that give it, and optionally a
 	 * regular expression for titles that give it.
