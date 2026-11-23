@@ -418,6 +418,10 @@ function load_posts( int $blog_id, array $post_ids, string $team ): array {
 		)
 	);
 
+	// A post's own comment count includes pingbacks, xcomments and spam, so only use it to skip posts without any.
+	$commented = wp_list_pluck( wp_list_filter( $posts, array( 'comment_count' => '0' ), 'NOT' ), 'ID' );
+	$comments  = get_comment_stats( $commented );
+
 	$items = array();
 	foreach ( $posts as $post ) {
 		$url = get_permalink( $post );
@@ -433,8 +437,8 @@ function load_posts( int $blog_id, array $post_ids, string $team ): array {
 			'title'    => get_title( $post ),
 			'summary'  => get_summary( $post ),
 			'minutes'  => get_reading_minutes( $post->post_content ),
-			'comments' => (int) $post->comment_count,
-			'first'    => $post->comment_count ? get_first_comment_id( $post ) : 0,
+			'comments' => $comments[ $post->ID ]['count'] ?? 0,
+			'first'    => $comments[ $post->ID ]['first'] ?? 0,
 			'label'    => get_post_label( $post, $team ),
 			'url'      => $url,
 		);
@@ -444,26 +448,58 @@ function load_posts( int $blog_id, array $post_ids, string $team ): array {
 }
 
 /**
- * Returns the ID of a post's first approved comment, the top of its thread.
+ * Counts posts' eligible comments and finds the first of each post's threads, in one query.
  *
- * @param WP_Post $post Post from the current blog.
- * @return int Comment ID, or 0 when it has none.
+ * Pingbacks, trackbacks, o2 xcomments and comments by spam users don't count.
+ *
+ * @param int[] $post_ids Post IDs from the current blog.
+ * @return array<int, array{count: int, first: int}> Comment count and first top-level comment ID, keyed by post ID.
  */
-function get_first_comment_id( WP_Post $post ): int {
-	$ids = get_comments(
+function get_comment_stats( array $post_ids ): array {
+	if ( ! $post_ids ) {
+		return array();
+	}
+
+	$comments = get_comments(
 		array(
-			'post_id' => $post->ID,
-			'status'  => 'approve',
-			'type'    => 'comment',
-			'parent'  => 0,
-			'orderby' => 'comment_date_gmt',
-			'order'   => 'ASC',
-			'number'  => 1,
-			'fields'  => 'ids',
+			'post__in'   => $post_ids,
+			'status'     => 'approve',
+			'type'       => 'comment',
+			'orderby'    => array(
+				'comment_date_gmt' => 'ASC',
+				'comment_ID'       => 'ASC',
+			),
+			'meta_query' => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Bounded by one page of posts.
+				array(
+					'key'     => 'xcomment_origin',
+					'compare' => 'NOT EXISTS',
+				),
+			),
 		)
 	);
 
-	return (int) ( $ids[0] ?? 0 );
+	cache_users( array_unique( array_map( static fn( \WP_Comment $comment ): int => (int) $comment->user_id, $comments ) ) );
+
+	$stats = array();
+	foreach ( $comments as $comment ) {
+		$user = get_userdata( (int) $comment->user_id );
+		if ( $user && ! empty( $user->spam ) ) {
+			continue;
+		}
+
+		$post_id           = (int) $comment->comment_post_ID;
+		$stats[ $post_id ] = $stats[ $post_id ] ?? array(
+			'count' => 0,
+			'first' => 0,
+		);
+
+		++$stats[ $post_id ]['count'];
+		if ( ! $stats[ $post_id ]['first'] && ! (int) $comment->comment_parent ) {
+			$stats[ $post_id ]['first'] = (int) $comment->comment_ID;
+		}
+	}
+
+	return $stats;
 }
 
 /**

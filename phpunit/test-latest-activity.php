@@ -414,12 +414,31 @@ class Test_Latest_Activity extends WP_UnitTestCase {
 	/**
 	 * Each row shows how many approved comments its post has. Logged out, it links to the
 	 * first comment, or not at all when there are none; logged in, to the reply box.
+	 *
+	 * Pingbacks, o2 xcomments and comments by spam users neither count nor become the first comment.
 	 */
 	public function test_shows_comment_count(): void {
-		$this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', time() - HOUR_IN_SECONDS ) ) );
-		$some = $this->create_post( self::$core );
+		$none    = $this->create_post( self::$core, array( 'post_date_gmt' => gmdate( 'Y-m-d H:i:s', time() - HOUR_IN_SECONDS ) ) );
+		$some    = $this->create_post( self::$core );
+		$spammer = self::factory()->user->create();
+		$this->mark_user_as_spam( $spammer );
 
 		switch_to_blog( self::$core );
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID' => $none,
+				'comment_type'    => 'pingback',
+			)
+		);
+		self::factory()->comment->create(
+			array(
+				'comment_post_ID'  => $some,
+				'user_id'          => $spammer,
+				'comment_date_gmt' => gmdate( 'Y-m-d H:i:s', time() - 3 * HOUR_IN_SECONDS ),
+			)
+		);
+		$xcomment = self::factory()->comment->create( array( 'comment_post_ID' => $some ) );
+		add_comment_meta( $xcomment, 'xcomment_origin', self::$design . ':1' );
 		$first = self::factory()->comment->create(
 			array(
 				'comment_post_ID'  => $some,
